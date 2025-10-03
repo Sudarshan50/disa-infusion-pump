@@ -11,10 +11,10 @@ export const DUMMY_ATTENDEE = {
 };
 
 export const DUMMY_DEVICE_DIRECTORY = [
-  { deviceId: "PUMP_001", location: "ICU Bay 3", password: "1234" },
-  { deviceId: "PUMP_002", location: "Ward 5 - Bed 12", password: "1234" },
-  { deviceId: "PUMP_003", location: "OT-2", password: "1234" },
-  { deviceId: "PUMP_004", location: "ICU Bay 1", password: "1234" },
+  { deviceId: "PUMP_001", location: "ICU Bay 3" },
+  { deviceId: "PUMP_002", location: "Ward 5 - Bed 12" },
+  { deviceId: "PUMP_003", location: "OT-2" },
+  { deviceId: "PUMP_004", location: "ICU Bay 1" },
 ];
 
 export type DeviceStatus = "Healthy" | "Running" | "Issue" | "Degraded";

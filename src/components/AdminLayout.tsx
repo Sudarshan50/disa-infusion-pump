@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 const AdminLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [isNavOpen, setIsNavOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const handleLogout = () => {
