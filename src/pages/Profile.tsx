@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { DUMMY_ADMIN } from "@/data/dummyData";
 import { User, Save } from "lucide-react";
 import { toast } from "sonner";
+import { Footer } from "@/components/Footer";
 
 const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
@@ -120,6 +121,8 @@ const Profile = () => {
           </div>
         </CardContent>
       </Card>
+
+      <Footer />
     </div>
   );
 };

@@ -3,6 +3,7 @@ import { Device, DUMMY_DEVICES } from "@/data/dummyData";
 import { DeviceRow } from "@/components/DeviceRow";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity } from "lucide-react";
+import { Footer } from "@/components/Footer";
 
 const AdminDashboard = () => {
   const [devices, setDevices] = useState<Device[]>(DUMMY_DEVICES);
@@ -89,6 +90,8 @@ const AdminDashboard = () => {
           </div>
         </CardContent>
       </Card>
+
+      <Footer />
     </div>
   );
 };

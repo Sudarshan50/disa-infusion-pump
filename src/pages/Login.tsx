@@ -5,13 +5,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity } from "lucide-react";
-import { DUMMY_ADMIN } from "@/data/dummyData";
+import { Activity, AlertCircle } from "lucide-react";
+import { DUMMY_ADMIN, DUMMY_DEVICE_DIRECTORY } from "@/data/dummyData";
 
 const Login = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [deviceId, setDeviceId] = useState("");
+  const [devicePassword, setDevicePassword] = useState("");
+  const [deviceError, setDeviceError] = useState("");
 
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,6 +24,43 @@ const Login = () => {
       success: true,
     });
     navigate("/admin");
+  };
+
+  const handleDeviceLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setDeviceError("");
+
+    const device = DUMMY_DEVICE_DIRECTORY.find(d => d.deviceId === deviceId.toUpperCase());
+    
+    if (!device) {
+      setDeviceError("Device ID not found");
+      console.log("🔐 Device Login Failed", {
+        type: "device_login_failed",
+        deviceId,
+        reason: "invalid_device_id",
+        at: new Date().toISOString(),
+      });
+      return;
+    }
+
+    if (device.password !== devicePassword) {
+      setDeviceError("Invalid password");
+      console.log("🔐 Device Login Failed", {
+        type: "device_login_failed",
+        deviceId,
+        reason: "invalid_password",
+        at: new Date().toISOString(),
+      });
+      return;
+    }
+
+    console.log("🔐 Device Login Success", {
+      type: "device_login_success",
+      deviceId: device.deviceId,
+      attendeeName: "Nurse K. Mehta",
+      at: new Date().toISOString(),
+    });
+    navigate(`/device/${device.deviceId}`);
   };
 
   return (
@@ -77,11 +117,52 @@ const Login = () => {
             </TabsContent>
             
             <TabsContent value="device" className="space-y-4">
-              <Card className="bg-muted/50 border-dashed">
-                <CardContent className="pt-6 text-center text-muted-foreground">
-                  <p className="text-sm">Device/Attendee login will be implemented in a future update.</p>
-                </CardContent>
-              </Card>
+              <form onSubmit={handleDeviceLogin} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="deviceId">Device ID</Label>
+                  <Input
+                    id="deviceId"
+                    type="text"
+                    placeholder="PUMP_001"
+                    value={deviceId}
+                    onChange={(e) => {
+                      setDeviceId(e.target.value);
+                      setDeviceError("");
+                    }}
+                    required
+                    className="h-12 uppercase"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="devicePassword">Password</Label>
+                  <Input
+                    id="devicePassword"
+                    type="password"
+                    placeholder="••••••••"
+                    value={devicePassword}
+                    onChange={(e) => {
+                      setDevicePassword(e.target.value);
+                      setDeviceError("");
+                    }}
+                    required
+                    className="h-12"
+                  />
+                </div>
+                {deviceError && (
+                  <div className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 p-3 rounded-lg">
+                    <AlertCircle className="h-4 w-4" />
+                    <span>{deviceError}</span>
+                  </div>
+                )}
+                <Button type="submit" className="w-full h-12 text-base">
+                  Sign in to Device
+                </Button>
+              </form>
+              <div className="bg-muted/50 p-4 rounded-lg text-sm text-muted-foreground text-center">
+                <p className="font-medium mb-1">Demo Credentials:</p>
+                <p>Device: PUMP_001, PUMP_002, PUMP_003, PUMP_004</p>
+                <p>Password: 1234</p>
+              </div>
             </TabsContent>
           </Tabs>
         </CardContent>

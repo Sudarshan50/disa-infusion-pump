@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { FileText, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Footer } from "@/components/Footer";
 
 const DeviceLogs = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -107,6 +108,8 @@ const DeviceLogs = () => {
           </div>
         </CardContent>
       </Card>
+
+      <Footer />
     </div>
   );
 };
