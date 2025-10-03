@@ -299,6 +299,7 @@ const DeviceDashboard = () => {
                 }}
                 variant="outline"
                 className="flex-1 min-w-[200px] h-12"
+                disabled
               >
                 <Clock className="mr-2 h-4 w-4" />
                 Schedule Infusion

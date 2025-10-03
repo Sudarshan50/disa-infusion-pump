@@ -32,6 +32,7 @@ export const IdleDeviceActions = ({
           onClick={() => setScheduleModalOpen(true)}
           variant="secondary"
           className="flex-1 min-w-[160px] h-12"
+          disabled
         >
           <Calendar className="mr-2 h-4 w-4" />
           Schedule Infusion

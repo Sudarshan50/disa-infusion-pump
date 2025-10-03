@@ -42,6 +42,13 @@ export const ConfirmActionModal = ({
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleConfirm();
+    }
+  };
+
   const getActionColor = () => {
     switch (action) {
       case "stop":
@@ -82,6 +89,7 @@ export const ConfirmActionModal = ({
               id="confirm-text"
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
+              onKeyDown={handleKeyDown}
               placeholder={`Type "${action}" here`}
               className="h-12"
               autoFocus
