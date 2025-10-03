@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Bell, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +20,18 @@ export const NotificationsPopover = ({
   deviceId,
 }: NotificationsPopoverProps) => {
   const [open, setOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640); // sm breakpoint
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const handleDelete = (id: string) => {
     console.log("🗑️ Delete Notification", {
@@ -43,7 +55,12 @@ export const NotificationsPopover = ({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 glass" align="end">
+      <PopoverContent 
+        className={`glass ${isMobile ? 'w-[75vw] max-w-sm' : 'w-80'}`} 
+        align={isMobile ? "center" : "end"}
+        side={isMobile ? "bottom" : "bottom"}
+        sideOffset={8}
+      >
         <div className="space-y-2">
           <h4 className="font-semibold text-sm">Notifications</h4>
           {notifications.length === 0 ? (
