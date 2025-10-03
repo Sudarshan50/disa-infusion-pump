@@ -1,5 +1,5 @@
 export const DUMMY_ADMIN = {
-  name: "Dr. A. Verma",
+  name: "Sudarshan (Admin)",
   email: "admin@hospital.example",
   lastLogin: "2025-09-28T10:24:00+05:30",
 };
