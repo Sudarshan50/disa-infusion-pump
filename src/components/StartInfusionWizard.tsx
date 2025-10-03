@@ -103,21 +103,21 @@ export const StartInfusionWizard = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass max-w-3xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-primary/5 via-background to-secondary/10">
+      <DialogContent className="glass w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-primary/5 via-background to-secondary/10 p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle className="text-2xl">
+          <DialogTitle className="text-lg sm:text-2xl">
             Start Infusion - {device.deviceId}
           </DialogTitle>
         </DialogHeader>
 
         {/* Stepper */}
-        <div className="flex items-center justify-center gap-4 py-4">
+        <div className="flex items-center justify-center gap-2 sm:gap-4 py-3 sm:py-4">
           {[1, 2, 3].map((s) => (
-            <div key={s} className="flex items-center gap-2">
+            <div key={s} className="flex items-center gap-1 sm:gap-2">
               <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all ${
+                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-semibold transition-all text-sm sm:text-base ${
                   s === step
-                    ? "bg-primary text-primary-foreground ring-4 ring-primary/20"
+                    ? "bg-primary text-primary-foreground ring-2 sm:ring-4 ring-primary/20"
                     : s < step
                     ? "bg-primary/20 text-primary"
                     : "bg-muted text-muted-foreground"
@@ -127,7 +127,7 @@ export const StartInfusionWizard = ({
               </div>
               {s < 3 && (
                 <div
-                  className={`h-1 w-8 md:w-16 rounded-full transition-all ${
+                  className={`h-0.5 sm:h-1 w-4 sm:w-8 md:w-16 rounded-full transition-all ${
                     s < step ? "bg-primary" : "bg-muted"
                   }`}
                 />

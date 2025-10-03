@@ -31,10 +31,10 @@ export const WizardStep1 = ({ onComplete }: WizardStep1Props) => {
   const isValidForProceed = formData.name && formData.weight && formData.bedNo;
 
   return (
-    <div className="space-y-6 py-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="space-y-4 sm:space-y-6 py-3 sm:py-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div className="space-y-2">
-          <Label htmlFor="patient-name">
+          <Label htmlFor="patient-name" className="text-sm sm:text-base">
             Name <span className="text-destructive">*</span>
           </Label>
           <Input
@@ -42,11 +42,11 @@ export const WizardStep1 = ({ onComplete }: WizardStep1Props) => {
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             placeholder="Patient name"
-            className="h-12"
+            className="h-10 sm:h-12 text-sm sm:text-base"
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="patient-age">Age</Label>
+          <Label htmlFor="patient-age" className="text-sm sm:text-base">Age</Label>
           <Input
             id="patient-age"
             type="number"
@@ -55,11 +55,11 @@ export const WizardStep1 = ({ onComplete }: WizardStep1Props) => {
               setFormData({ ...formData, age: parseInt(e.target.value) || undefined })
             }
             placeholder="Years"
-            className="h-12"
+            className="h-10 sm:h-12 text-sm sm:text-base"
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="patient-weight">
+          <Label htmlFor="patient-weight" className="text-sm sm:text-base">
             Weight (kg) <span className="text-destructive">*</span>
           </Label>
           <Input
@@ -70,11 +70,11 @@ export const WizardStep1 = ({ onComplete }: WizardStep1Props) => {
               setFormData({ ...formData, weight: parseInt(e.target.value) || undefined })
             }
             placeholder="Weight in kg"
-            className="h-12"
+            className="h-10 sm:h-12 text-sm sm:text-base"
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="patient-bed">
+          <Label htmlFor="patient-bed" className="text-sm sm:text-base">
             Bed No. <span className="text-destructive">*</span>
           </Label>
           <Input
@@ -82,34 +82,34 @@ export const WizardStep1 = ({ onComplete }: WizardStep1Props) => {
             value={formData.bedNo}
             onChange={(e) => setFormData({ ...formData, bedNo: e.target.value })}
             placeholder="e.g., ICU-12"
-            className="h-12"
+            className="h-10 sm:h-12 text-sm sm:text-base"
           />
         </div>
-        <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="patient-drug">Drug to be Infused</Label>
+        <div className="space-y-2 sm:col-span-2">
+          <Label htmlFor="patient-drug" className="text-sm sm:text-base">Drug to be Infused</Label>
           <Input
             id="patient-drug"
             value={formData.drugInfused}
             onChange={(e) => setFormData({ ...formData, drugInfused: e.target.value })}
             placeholder="Drug name"
-            className="h-12"
+            className="h-10 sm:h-12 text-sm sm:text-base"
           />
         </div>
-        <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="patient-allergies">Allergies (optional)</Label>
+        <div className="space-y-2 sm:col-span-2">
+          <Label htmlFor="patient-allergies" className="text-sm sm:text-base">Allergies (optional)</Label>
           <Textarea
             id="patient-allergies"
             value={formData.allergies}
             onChange={(e) => setFormData({ ...formData, allergies: e.target.value })}
             placeholder="List any known allergies"
-            className="min-h-20"
+            className="min-h-16 sm:min-h-20 text-sm sm:text-base"
           />
         </div>
       </div>
 
       {!isValidForProceed && (
-        <div className="flex items-start gap-2 bg-muted/50 p-4 rounded-lg text-sm">
-          <AlertCircle className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
+        <div className="flex items-start gap-2 bg-muted/50 p-3 sm:p-4 rounded-lg text-xs sm:text-sm">
+          <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
           <p className="text-muted-foreground">
             Please fill in required fields (Name, Weight, Bed No.) to proceed with validation,
             or skip to continue without validation.
@@ -117,15 +117,15 @@ export const WizardStep1 = ({ onComplete }: WizardStep1Props) => {
         </div>
       )}
 
-      <div className="flex gap-3 pt-4">
+      <div className="flex flex-col sm:flex-row gap-3 pt-4">
         <Button
           onClick={handleProceed}
           disabled={!isValidForProceed}
-          className="flex-1 h-12"
+          className="flex-1 h-10 sm:h-12 text-sm sm:text-base"
         >
           Proceed Next (Recommended)
         </Button>
-        <Button onClick={handleSkip} variant="outline" className="flex-1 h-12">
+        <Button onClick={handleSkip} variant="outline" className="flex-1 h-10 sm:h-12 text-sm sm:text-base">
           Skip (Not Recommended)
         </Button>
       </div>

@@ -83,10 +83,10 @@ export const WizardStep2 = ({ onComplete, onBack }: WizardStep2Props) => {
   const isValid = flowRate && time && volume && validationErrors.length === 0;
 
   return (
-    <div className="space-y-6 py-4">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="space-y-4 sm:space-y-6 py-3 sm:py-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         <div className="space-y-2">
-          <Label htmlFor="flow-rate">
+          <Label htmlFor="flow-rate" className="text-sm sm:text-base">
             Flow Rate (ml/min) <span className="text-destructive">*</span>
           </Label>
           <Input
@@ -97,12 +97,12 @@ export const WizardStep2 = ({ onComplete, onBack }: WizardStep2Props) => {
             value={flowRate || ""}
             onChange={(e) => setFlowRate(parseFloat(e.target.value) || undefined)}
             placeholder="Max 10"
-            className="h-12"
+            className="h-10 sm:h-12 text-sm sm:text-base"
           />
           <p className="text-xs text-muted-foreground">Maximum: 10 ml/min</p>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="time">
+          <Label htmlFor="time" className="text-sm sm:text-base">
             Time (min) <span className="text-destructive">*</span>
           </Label>
           <Input
@@ -112,11 +112,11 @@ export const WizardStep2 = ({ onComplete, onBack }: WizardStep2Props) => {
             value={time || ""}
             onChange={(e) => setTime(parseFloat(e.target.value) || undefined)}
             placeholder="Minutes"
-            className="h-12"
+            className="h-10 sm:h-12 text-sm sm:text-base"
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="volume">
+          <Label htmlFor="volume" className="text-sm sm:text-base">
             Volume (ml) <span className="text-destructive">*</span>
           </Label>
           <Input
@@ -126,22 +126,22 @@ export const WizardStep2 = ({ onComplete, onBack }: WizardStep2Props) => {
             value={volume || ""}
             onChange={(e) => setVolume(parseFloat(e.target.value) || undefined)}
             placeholder="< 30 ml"
-            className="h-12"
+            className="h-10 sm:h-12 text-sm sm:text-base"
           />
           <p className="text-xs text-muted-foreground">Must be less than 30 ml</p>
         </div>
       </div>
 
       {autoCalcMessage && (
-        <div className="flex items-start gap-2 bg-primary/10 p-4 rounded-lg text-sm">
-          <Calculator className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+        <div className="flex items-start gap-2 bg-primary/10 p-3 sm:p-4 rounded-lg text-xs sm:text-sm">
+          <Calculator className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0 mt-0.5" />
           <p className="text-primary font-medium">{autoCalcMessage}</p>
         </div>
       )}
 
       {validationErrors.length > 0 && (
-        <div className="flex items-start gap-2 bg-destructive/10 p-4 rounded-lg text-sm">
-          <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+        <div className="flex items-start gap-2 bg-destructive/10 p-3 sm:p-4 rounded-lg text-xs sm:text-sm">
+          <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-destructive flex-shrink-0 mt-0.5" />
           <div>
             {validationErrors.map((error, index) => (
               <p key={index} className="text-destructive">{error}</p>
@@ -151,9 +151,9 @@ export const WizardStep2 = ({ onComplete, onBack }: WizardStep2Props) => {
       )}
 
       {/* Bolus Section */}
-      <div className="space-y-4 p-4 border rounded-lg">
+      <div className="space-y-3 sm:space-y-4 p-3 sm:p-4 border rounded-lg">
         <div className="flex items-center justify-between">
-          <Label htmlFor="bolus-enabled" className="text-base font-semibold">
+          <Label htmlFor="bolus-enabled" className="text-sm sm:text-base font-semibold">
             Enable Bolus
           </Label>
           <Switch
@@ -165,13 +165,13 @@ export const WizardStep2 = ({ onComplete, onBack }: WizardStep2Props) => {
 
         {bolusEnabled && volume && (
           <div className="space-y-3 pt-2">
-            <Label>Bolus Volume: {bolusVolume.toFixed(1)} ml</Label>
+            <Label className="text-sm sm:text-base">Bolus Volume: {bolusVolume.toFixed(1)} ml</Label>
             <Slider
               value={[bolusVolume]}
               onValueChange={(values) => setBolusVolume(values[0])}
               max={volume}
               step={0.5}
-              className="py-4"
+              className="py-3 sm:py-4"
             />
             <p className="text-xs text-muted-foreground">
               Bolus will deliver the initial portion at a higher rate for faster onset
@@ -180,11 +180,11 @@ export const WizardStep2 = ({ onComplete, onBack }: WizardStep2Props) => {
         )}
       </div>
 
-      <div className="flex gap-3 pt-4">
-        <Button onClick={onBack} variant="outline" className="flex-1 h-12">
+      <div className="flex flex-col sm:flex-row gap-3 pt-4">
+        <Button onClick={onBack} variant="outline" className="flex-1 h-10 sm:h-12 text-sm sm:text-base">
           Back
         </Button>
-        <Button onClick={handleProceed} disabled={!isValid} className="flex-1 h-12">
+        <Button onClick={handleProceed} disabled={!isValid} className="flex-1 h-10 sm:h-12 text-sm sm:text-base">
           Proceed Next
         </Button>
       </div>

@@ -63,9 +63,9 @@ export const PatientDetailsModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass max-w-2xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-primary/5 via-background to-secondary/10">
+      <DialogContent className="glass w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-primary/5 via-background to-secondary/10 p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle className="text-2xl">
+          <DialogTitle className="text-lg sm:text-2xl">
             Patient & Infusion Details - {device.deviceId}
           </DialogTitle>
         </DialogHeader>

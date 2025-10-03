@@ -64,25 +64,25 @@ export const ConfirmActionModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass max-w-md bg-gradient-to-br from-primary/5 via-background to-secondary/10">
+      <DialogContent className="glass w-[95vw] max-w-md bg-gradient-to-br from-primary/5 via-background to-secondary/10 p-4 sm:p-6">
         <DialogHeader>
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-muted rounded-lg">
-              <AlertTriangle className="h-5 w-5 text-orange-600" />
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-muted rounded-lg">
+              <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
             </div>
-            <DialogTitle className="text-xl">
+            <DialogTitle className="text-lg sm:text-xl">
               Confirm {action.charAt(0).toUpperCase() + action.slice(1)}
             </DialogTitle>
           </div>
-          <DialogDescription className="pt-4">
+          <DialogDescription className="pt-3 sm:pt-4 text-sm sm:text-base">
             You are about to <span className={`font-semibold ${getActionColor()}`}>{action}</span>{" "}
             the infusion on device <span className="font-mono font-semibold">{deviceId}</span>.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-3 sm:space-y-4 py-3 sm:py-4">
           <div className="space-y-2">
-            <Label htmlFor="confirm-text">
+            <Label htmlFor="confirm-text" className="text-sm sm:text-base">
               Type <span className="font-mono font-bold">&quot;{action}&quot;</span> to confirm
             </Label>
             <Input
@@ -91,21 +91,21 @@ export const ConfirmActionModal = ({
               onChange={(e) => setConfirmText(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={`Type "${action}" here`}
-              className="h-12"
+              className="h-10 sm:h-12 text-sm sm:text-base"
               autoFocus
             />
           </div>
         </div>
 
-        <DialogFooter className="flex gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
+        <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1 h-10 sm:h-12 text-sm sm:text-base">
             Cancel
           </Button>
           <Button
             onClick={handleConfirm}
             disabled={confirmText.toLowerCase() !== action}
             variant={action === "stop" ? "destructive" : "default"}
-            className="flex-1"
+            className="flex-1 h-10 sm:h-12 text-sm sm:text-base"
           >
             Confirm {action.charAt(0).toUpperCase() + action.slice(1)}
           </Button>

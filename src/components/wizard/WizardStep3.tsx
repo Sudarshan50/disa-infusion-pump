@@ -29,21 +29,21 @@ export const WizardStep3 = ({
   const isConfirmEnabled = confirmText.toLowerCase() === "start";
 
   return (
-    <div className="space-y-6 py-4">
+    <div className="space-y-4 sm:space-y-6 py-3 sm:py-4">
       {/* Patient Summary */}
       <Card className="glass-dark">
-        <div className="p-4 space-y-4">
-          <div className="flex items-center gap-2 text-primary font-semibold">
-            <User className="h-5 w-5" />
+        <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
+          <div className="flex items-center gap-2 text-primary font-semibold text-sm sm:text-base">
+            <User className="h-4 w-4 sm:h-5 sm:w-5" />
             <h3>Patient Information</h3>
             {skippedPatient && (
-              <Badge variant="destructive" className="ml-auto">
+              <Badge variant="destructive" className="ml-auto text-xs">
                 Skipped
               </Badge>
             )}
           </div>
           {!skippedPatient && patientData ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
               <div>
                 <p className="text-muted-foreground">Name</p>
                 <p className="font-semibold">{patientData.name || "—"}</p>
@@ -60,17 +60,17 @@ export const WizardStep3 = ({
                 <p className="text-muted-foreground">Bed No.</p>
                 <p className="font-semibold">{patientData.bedNo || "—"}</p>
               </div>
-              <div className="md:col-span-2">
+              <div className="sm:col-span-2">
                 <p className="text-muted-foreground">Drug</p>
                 <p className="font-semibold">{patientData.drugInfused || "—"}</p>
               </div>
-              <div className="md:col-span-2">
+              <div className="sm:col-span-2">
                 <p className="text-muted-foreground">Allergies</p>
                 <p className="font-semibold">{patientData.allergies || "None specified"}</p>
               </div>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Patient details were skipped. Please ensure proper documentation.
             </p>
           )}
@@ -79,12 +79,12 @@ export const WizardStep3 = ({
 
       {/* Infusion Summary */}
       <Card className="glass-dark">
-        <div className="p-4 space-y-4">
-          <div className="flex items-center gap-2 text-primary font-semibold">
-            <Syringe className="h-5 w-5" />
+        <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
+          <div className="flex items-center gap-2 text-primary font-semibold text-sm sm:text-base">
+            <Syringe className="h-4 w-4 sm:h-5 sm:w-5" />
             <h3>Infusion Configuration</h3>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 text-xs sm:text-sm">
             <div>
               <p className="text-muted-foreground">Flow Rate</p>
               <p className="font-semibold">{infusionData.flowRateMlMin} ml/min</p>
@@ -100,8 +100,8 @@ export const WizardStep3 = ({
           </div>
           {infusionData.bolus?.enabled && (
             <div className="pt-2 border-t">
-              <p className="text-sm text-muted-foreground">Bolus Configuration</p>
-              <p className="font-semibold text-primary">
+              <p className="text-xs sm:text-sm text-muted-foreground">Bolus Configuration</p>
+              <p className="font-semibold text-primary text-sm">
                 Enabled - {infusionData.bolus.volumeMl} ml initial bolus
               </p>
             </div>
@@ -111,11 +111,11 @@ export const WizardStep3 = ({
 
       {/* Confirmation */}
       <Card className="glass-dark border-2 border-primary/20">
-        <div className="p-4 space-y-4">
+        <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
           <div className="flex items-start gap-2">
-            <AlertCircle className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+            <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0 mt-0.5" />
             <div className="space-y-2 flex-1">
-              <Label htmlFor="confirm-start" className="text-base font-semibold">
+              <Label htmlFor="confirm-start" className="text-sm sm:text-base font-semibold">
                 Type <span className="font-mono text-primary">&quot;start&quot;</span> to confirm and begin infusion
               </Label>
               <Input
@@ -123,7 +123,7 @@ export const WizardStep3 = ({
                 value={confirmText}
                 onChange={(e) => setConfirmText(e.target.value)}
                 placeholder='Type "start" here'
-                className="h-12"
+                className="h-10 sm:h-12 text-sm sm:text-base"
                 autoFocus
               />
             </div>
@@ -131,14 +131,14 @@ export const WizardStep3 = ({
         </div>
       </Card>
 
-      <div className="flex gap-3 pt-4">
-        <Button onClick={onBack} variant="outline" className="flex-1 h-12">
+      <div className="flex flex-col sm:flex-row gap-3 pt-4">
+        <Button onClick={onBack} variant="outline" className="flex-1 h-10 sm:h-12 text-sm sm:text-base">
           Back
         </Button>
         <Button
           onClick={onConfirm}
           disabled={!isConfirmEnabled}
-          className="flex-1 h-12"
+          className="flex-1 h-10 sm:h-12 text-sm sm:text-base"
         >
           Confirm & Start Infusion
         </Button>
