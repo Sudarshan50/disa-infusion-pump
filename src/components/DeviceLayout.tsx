@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { Outlet, useNavigate, Link, useLocation } from "react-router-dom";
-import { ChevronRight, Home, FileText, LogOut, User } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Outlet, useNavigate, NavLink, useLocation } from "react-router-dom";
+import { Menu, Home, FileText, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,13 +9,47 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DUMMY_ATTENDEE } from "@/data/dummyData";
+import { cn } from "@/lib/utils";
 
 const DeviceLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [isNavOpen, setIsNavOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true); // Start open on desktop, will be adjusted for mobile
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check if we're on mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768; // md breakpoint
+      setIsMobile(mobile);
+      // On mobile, close sidebar by default
+      if (mobile) {
+        setSidebarOpen(false);
+      } else {
+        // On desktop, open sidebar by default (if not explicitly closed)
+        setSidebarOpen(true);
+      }
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Close sidebar when route changes on mobile
+  useEffect(() => {
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
+  }, [location.pathname, isMobile]);
 
   const handleLogout = () => {
     console.log("🚪 Device Logout", {
@@ -31,22 +65,25 @@ const DeviceLayout = () => {
   ];
 
   const getDeviceId = () => {
-    const match = location.pathname.match(/\/device\/([^\/]+)/);
+    const match = location.pathname.match(/\/device\/([^/]+)/);
     return match ? match[1] : "";
   };
 
-  const isActive = (path: string) => {
-    const deviceId = getDeviceId();
-    const fullPath = `/device/${deviceId}${path}`;
-    return location.pathname === fullPath;
-  };
-
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-primary/5 via-background to-secondary/10">
+    <TooltipProvider>
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-primary/5 via-background to-secondary/10">
       {/* Top App Bar */}
       <header className="bg-background/80 backdrop-blur-md border-b sticky top-0 z-50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
             <span className="text-lg font-medium">
               Welcome, {DUMMY_ATTENDEE.name}
             </span>
@@ -93,58 +130,86 @@ const DeviceLayout = () => {
         </div>
       </header>
 
-      <div className="flex flex-1">
+      <div className="flex flex-1 w-full relative">
+        {/* Mobile Backdrop */}
+        {sidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-30 md:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+        
         {/* Sidebar */}
         <aside
-          className={`${
-            isNavOpen ? "w-64" : "w-16"
-          } bg-background/80 backdrop-blur-md border-r transition-all duration-300 flex flex-col`}
+          className={cn(
+            "glass border-r transition-all duration-300 flex flex-col h-[calc(100vh-4rem)] z-40",
+            // Mobile: fixed positioning with slide animation
+            "fixed md:sticky top-16 left-0",
+            sidebarOpen 
+              ? "w-64 translate-x-0" 
+              : "w-64 -translate-x-full md:translate-x-0",
+            // Desktop: change width only, no translation
+            sidebarOpen 
+              ? "md:w-64" 
+              : "md:w-16",
+            // Prevent overflow issues in collapsed state
+            !sidebarOpen && "md:overflow-visible"
+          )}
         >
-          <div className="p-4 flex justify-end">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsNavOpen(!isNavOpen)}
-            >
-              <ChevronRight
-                className={`h-5 w-5 transition-transform ${
-                  isNavOpen ? "rotate-180" : ""
-                }`}
-              />
-            </Button>
-          </div>
-
-          <nav className="flex-1 px-2 space-y-1">
+          <nav className={cn("flex-1 space-y-2", sidebarOpen ? "p-4" : "px-2 py-4")}>
             {navItems.map((item) => {
-              const Icon = item.icon;
               const deviceId = getDeviceId();
-              const active = isActive(item.path);
-              return (
-                <Link
-                  key={item.label}
+              const navContent = (
+                <NavLink
+                  key={item.path}
                   to={`/device/${deviceId}${item.path}`}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                    active
-                      ? "bg-primary/10 text-primary font-medium"
-                      : "text-muted-foreground hover:bg-muted"
-                  }`}
+                  end={item.path === ""}
+                  className={({ isActive }) =>
+                    cn(
+                      "flex items-center rounded-xl transition-all hover:bg-accent text-foreground font-medium",
+                      isActive && "bg-primary text-primary-foreground hover:bg-primary/90",
+                      sidebarOpen ? "gap-3 px-4 py-3" : "justify-center p-2 w-12 h-12 mx-auto"
+                    )
+                  }
                 >
-                  <Icon className="h-5 w-5 flex-shrink-0" />
-                  {isNavOpen && <span>{item.label}</span>}
-                </Link>
+                  <item.icon className={cn("h-5 w-5 flex-shrink-0", !sidebarOpen && "md:h-6 md:w-6")} />
+                  {sidebarOpen && <span className="whitespace-nowrap">{item.label}</span>}
+                </NavLink>
               );
+
+              // Show tooltip only on desktop when sidebar is collapsed
+              if (!sidebarOpen && !isMobile) {
+                return (
+                  <Tooltip key={item.path}>
+                    <TooltipTrigger asChild>
+                      {navContent}
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      {item.label}
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              }
+
+              return navContent;
             })}
           </nav>
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-auto">
-          <div className="container mx-auto p-6 max-w-7xl">
+        <main 
+          className={cn(
+            "flex-1 p-4 md:p-6 lg:p-8 w-full transition-all duration-300",
+            "min-h-[calc(100vh-4rem)] overflow-auto"
+          )}
+        >
+          <div className="container mx-auto max-w-7xl">
             <Outlet />
           </div>
         </main>
       </div>
     </div>
+    </TooltipProvider>
   );
 };
 
