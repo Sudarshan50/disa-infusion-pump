@@ -87,7 +87,7 @@ const Login = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="admin" className="w-full">
+          <Tabs defaultValue={urlDeviceId ? "device" : "admin"} className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="admin">Admin</TabsTrigger>
               <TabsTrigger value="device">Device/Attendee</TabsTrigger>
