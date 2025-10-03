@@ -78,51 +78,56 @@ const AdminLayout = () => {
     <TooltipProvider>
       <div className="min-h-screen flex flex-col w-full">
       {/* Top App Bar */}
-      <header className="h-16 glass border-b sticky top-0 z-50 flex items-center justify-between px-4 md:px-6">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-          <h2 className="text-lg md:text-xl font-semibold text-foreground">
-            Welcome, {DUMMY_ADMIN.name}
-          </h2>
-        </div>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-              <Avatar className="h-10 w-10 border-2 border-primary">
-                <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
-                  {getInitials(DUMMY_ADMIN.name)}
-                </AvatarFallback>
-              </Avatar>
+      <header className="bg-background/80 backdrop-blur-md border-b sticky top-0 z-50">
+        <div className="w-full px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+              className="flex-shrink-0"
+            >
+              <Menu className="h-5 w-5" />
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56 glass" align="end">
-            <DropdownMenuLabel>
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium">{DUMMY_ADMIN.name}</p>
-                <p className="text-xs text-muted-foreground">{DUMMY_ADMIN.email}</p>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem disabled className="text-xs">
-              Last login: {new Date(DUMMY_ADMIN.lastLogin).toLocaleString()}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate("/admin/profile")}>
-              Profile
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleLogout} className="text-destructive">
-              Logout
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            <h2 className="text-lg font-semibold text-foreground truncate">
+              Welcome, {DUMMY_ADMIN.name}
+            </h2>
+          </div>
+
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                  <Avatar className="h-10 w-10 border-2 border-primary">
+                    <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
+                      {getInitials(DUMMY_ADMIN.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56 glass" align="end">
+                <DropdownMenuLabel>
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium">{DUMMY_ADMIN.name}</p>
+                    <p className="text-xs text-muted-foreground">{DUMMY_ADMIN.email}</p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem disabled className="text-xs">
+                  Last login: {new Date(DUMMY_ADMIN.lastLogin).toLocaleString()}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate("/admin/profile")}>
+                  Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
       </header>
 
       <div className="flex flex-1 w-full relative">

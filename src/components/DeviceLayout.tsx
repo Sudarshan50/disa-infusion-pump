@@ -74,22 +74,23 @@ const DeviceLayout = () => {
       <div className="min-h-screen flex flex-col bg-gradient-to-br from-primary/5 via-background to-secondary/10">
       {/* Top App Bar */}
       <header className="bg-background/80 backdrop-blur-md border-b sticky top-0 z-50">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="w-full px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setSidebarOpen(!sidebarOpen)}
               title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+              className="flex-shrink-0"
             >
               <Menu className="h-5 w-5" />
             </Button>
-            <span className="text-lg font-medium">
+            <span className="text-lg font-medium truncate">
               Welcome, {DUMMY_ATTENDEE.name}
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             {/* Profile Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
