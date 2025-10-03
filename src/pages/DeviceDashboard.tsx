@@ -146,7 +146,7 @@ const DeviceDashboard = () => {
       {/* Running State */}
       {deviceState.status === "Running" && deviceState.patient && deviceState.infusion && (
         <div className="space-y-6">
-          {/* Actions */}
+          {/* Controls - First */}
           <Card className="glass">
             <CardHeader>
               <CardTitle>Controls</CardTitle>
@@ -159,7 +159,47 @@ const DeviceDashboard = () => {
             </CardContent>
           </Card>
 
-          {/* Patient & Infusion Details */}
+          {/* Progress - Second */}
+          {deviceState.progress && (
+            <Card className="glass">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">Progress</CardTitle>
+                  <Button variant="outline" size="sm" onClick={handleToggleProgress}>
+                    Switch to {deviceState.progress.mode === "time" ? "Volume" : "Time"}
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {deviceState.progress.mode === "time" ? (
+                      <>
+                        <Clock className="h-5 w-5 text-primary" />
+                        <span className="font-medium">Time Remaining</span>
+                      </>
+                    ) : (
+                      <>
+                        <Droplets className="h-5 w-5 text-primary" />
+                        <span className="font-medium">Volume Remaining</span>
+                      </>
+                    )}
+                  </div>
+                  <span className="text-2xl font-bold text-primary">
+                    {deviceState.progress.mode === "time"
+                      ? `${deviceState.progress.timeRemainingMin} min`
+                      : `${deviceState.progress.volumeRemainingMl} ml`}
+                  </span>
+                </div>
+                <Progress value={progressPercent} className="h-3" />
+                <p className="text-sm text-muted-foreground text-center">
+                  {progressPercent.toFixed(1)}% complete
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Patient & Infusion Details - Third */}
           <div className="grid md:grid-cols-2 gap-6">
             <Card className="glass">
               <CardHeader>
@@ -225,46 +265,6 @@ const DeviceDashboard = () => {
               </CardContent>
             </Card>
           </div>
-
-          {/* Progress */}
-          {deviceState.progress && (
-            <Card className="glass">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Progress</CardTitle>
-                  <Button variant="outline" size="sm" onClick={handleToggleProgress}>
-                    Switch to {deviceState.progress.mode === "time" ? "Volume" : "Time"}
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {deviceState.progress.mode === "time" ? (
-                      <>
-                        <Clock className="h-5 w-5 text-primary" />
-                        <span className="font-medium">Time Remaining</span>
-                      </>
-                    ) : (
-                      <>
-                        <Droplets className="h-5 w-5 text-primary" />
-                        <span className="font-medium">Volume Remaining</span>
-                      </>
-                    )}
-                  </div>
-                  <span className="text-2xl font-bold text-primary">
-                    {deviceState.progress.mode === "time"
-                      ? `${deviceState.progress.timeRemainingMin} min`
-                      : `${deviceState.progress.volumeRemainingMl} ml`}
-                  </span>
-                </div>
-                <Progress value={progressPercent} className="h-3" />
-                <p className="text-sm text-muted-foreground text-center">
-                  {progressPercent.toFixed(1)}% complete
-                </p>
-              </CardContent>
-            </Card>
-          )}
         </div>
       )}
 
