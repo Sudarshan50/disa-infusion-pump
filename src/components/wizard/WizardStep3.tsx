@@ -28,6 +28,15 @@ export const WizardStep3 = ({
 
   const isConfirmEnabled = confirmText.toLowerCase() === "start";
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (isConfirmEnabled) {
+        onConfirm();
+      }
+    }
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6 py-3 sm:py-4">
       {/* Patient Summary */}
@@ -122,6 +131,7 @@ export const WizardStep3 = ({
                 id="confirm-start"
                 value={confirmText}
                 onChange={(e) => setConfirmText(e.target.value)}
+                onKeyDown={handleKeyDown}
                 placeholder='Type "start" here'
                 className="h-10 sm:h-12 text-sm sm:text-base"
                 autoFocus
