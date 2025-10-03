@@ -64,7 +64,7 @@ export const ConfirmActionModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass w-[95vw] max-w-md bg-gradient-to-br from-primary/5 via-background to-secondary/10 p-4 sm:p-6">
+      <DialogContent className="glass w-[95vw] max-w-md bg-gradient-to-br from-primary/5 via-background to-secondary/10 p-4 sm:p-6 rounded-2xl border-0">
         <DialogHeader>
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="p-1.5 sm:p-2 bg-muted rounded-lg">
