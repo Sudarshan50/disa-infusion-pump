@@ -26,11 +26,11 @@ export const NotificationsPopover = ({
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 640); // sm breakpoint
     };
-    
+
     checkMobile();
-    window.addEventListener('resize', checkMobile);
-    
-    return () => window.removeEventListener('resize', checkMobile);
+    window.addEventListener("resize", checkMobile);
+
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   const handleDelete = (id: string) => {
@@ -55,8 +55,8 @@ export const NotificationsPopover = ({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent 
-        className={`glass ${isMobile ? 'w-[75vw] max-w-sm' : 'w-80'}`} 
+      <PopoverContent
+        className={`glass ${isMobile ? "w-[75vw] max-w-sm" : "w-80"}`}
         align={isMobile ? "center" : "end"}
         side={isMobile ? "bottom" : "bottom"}
         sideOffset={8}

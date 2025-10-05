@@ -36,7 +36,12 @@ export const RunningDeviceActions = ({
       action: "stop",
       timestamp: new Date().toISOString(),
     });
-    onUpdateDevice(device.deviceId, { status: "Healthy", patient: undefined, infusion: undefined, progress: undefined });
+    onUpdateDevice(device.deviceId, {
+      status: "Healthy",
+      patient: undefined,
+      infusion: undefined,
+      progress: undefined,
+    });
     setStopModalOpen(false);
   };
 

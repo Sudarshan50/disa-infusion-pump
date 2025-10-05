@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,7 +33,9 @@ const Profile = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">Admin Profile</h1>
+        <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
+          Admin Profile
+        </h1>
         <p className="text-muted-foreground">Manage your account information</p>
       </div>
 
@@ -39,7 +47,9 @@ const Profile = () => {
             </div>
             <div className="flex-1">
               <CardTitle>Account Details</CardTitle>
-              <CardDescription>Your administrator account information</CardDescription>
+              <CardDescription>
+                Your administrator account information
+              </CardDescription>
             </div>
             {!isEditing && (
               <Button variant="outline" onClick={() => setIsEditing(true)}>
@@ -56,7 +66,9 @@ const Profile = () => {
                 <Input
                   id="name"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
                   className="h-12"
                 />
               ) : (
@@ -73,7 +85,9 @@ const Profile = () => {
                   id="email"
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
                   className="h-12"
                 />
               ) : (

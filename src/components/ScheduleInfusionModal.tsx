@@ -74,16 +74,24 @@ export const ScheduleInfusionModal = ({
             />
           </div>
           <div className="bg-muted/50 p-4 rounded-lg text-sm text-muted-foreground">
-            This is a placeholder for scheduling functionality. In production, this would
-            integrate with your scheduling system.
+            This is a placeholder for scheduling functionality. In production,
+            this would integrate with your scheduling system.
           </div>
         </div>
 
         <DialogFooter className="flex gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            className="flex-1"
+          >
             Cancel
           </Button>
-          <Button onClick={handleSchedule} disabled={!date || !time} className="flex-1">
+          <Button
+            onClick={handleSchedule}
+            disabled={!date || !time}
+            className="flex-1"
+          >
             Schedule
           </Button>
         </DialogFooter>

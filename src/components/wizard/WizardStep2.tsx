@@ -24,7 +24,7 @@ export const WizardStep2 = ({ onComplete, onBack }: WizardStep2Props) => {
 
   useEffect(() => {
     if (isCalculating) return; // Prevent infinite loops during auto-calculation
-    
+
     // Clear previous messages and errors
     const errors: string[] = [];
     setAutoCalcMessage("");
@@ -58,37 +58,49 @@ export const WizardStep2 = ({ onComplete, onBack }: WizardStep2Props) => {
     const hasFlowRate = flowRate !== undefined && flowRate > 0;
     const hasTime = time !== undefined && time > 0;
     const hasVolume = volume !== undefined && volume > 0;
-    const filledFields = [hasFlowRate, hasTime, hasVolume].filter(Boolean).length;
+    const filledFields = [hasFlowRate, hasTime, hasVolume].filter(
+      Boolean
+    ).length;
 
     // Auto-calculate when exactly 2 fields are filled
     if (filledFields === 2) {
       setIsCalculating(true);
-      
+
       if (hasFlowRate && hasTime && !hasVolume) {
         // Calculate Volume = Flow Rate × Time
-        const calculated = Math.round((flowRate! * time!) * 100) / 100; // Round to 2 decimal places
+        const calculated = Math.round(flowRate! * time! * 100) / 100; // Round to 2 decimal places
         if (calculated < 30) {
           setVolume(calculated);
-          setAutoCalcMessage(`Volume auto-calculated: ${calculated} ml = ${flowRate} ml/min × ${time} min`);
+          setAutoCalcMessage(
+            `Volume auto-calculated: ${calculated} ml = ${flowRate} ml/min × ${time} min`
+          );
         } else {
-          setAutoCalcMessage(`Calculated volume (${calculated} ml) exceeds 30 ml limit. Please adjust flow rate or time.`);
+          setAutoCalcMessage(
+            `Calculated volume (${calculated} ml) exceeds 30 ml limit. Please adjust flow rate or time.`
+          );
         }
       } else if (hasFlowRate && hasVolume && !hasTime) {
         // Calculate Time = Volume ÷ Flow Rate
         const calculated = Math.round((volume! / flowRate!) * 100) / 100; // Round to 2 decimal places
         setTime(calculated);
-        setAutoCalcMessage(`Time auto-calculated: ${calculated} min = ${volume} ml ÷ ${flowRate} ml/min`);
+        setAutoCalcMessage(
+          `Time auto-calculated: ${calculated} min = ${volume} ml ÷ ${flowRate} ml/min`
+        );
       } else if (hasTime && hasVolume && !hasFlowRate) {
         // Calculate Flow Rate = Volume ÷ Time
         const calculated = Math.round((volume! / time!) * 100) / 100; // Round to 2 decimal places
         if (calculated <= 10) {
           setFlowRate(calculated);
-          setAutoCalcMessage(`Flow rate auto-calculated: ${calculated} ml/min = ${volume} ml ÷ ${time} min`);
+          setAutoCalcMessage(
+            `Flow rate auto-calculated: ${calculated} ml/min = ${volume} ml ÷ ${time} min`
+          );
         } else {
-          setAutoCalcMessage(`Calculated flow rate (${calculated} ml/min) exceeds 10 ml/min limit. Please adjust volume or time.`);
+          setAutoCalcMessage(
+            `Calculated flow rate (${calculated} ml/min) exceeds 10 ml/min limit. Please adjust volume or time.`
+          );
         }
       }
-      
+
       setTimeout(() => setIsCalculating(false), 100); // Reset after a short delay
     }
   }, [flowRate, time, volume, isCalculating]);
@@ -134,7 +146,14 @@ export const WizardStep2 = ({ onComplete, onBack }: WizardStep2Props) => {
     onComplete(infusionData);
   };
 
-  const isValid = flowRate && flowRate > 0 && time && time > 0 && volume && volume > 0 && validationErrors.length === 0;
+  const isValid =
+    flowRate &&
+    flowRate > 0 &&
+    time &&
+    time > 0 &&
+    volume &&
+    volume > 0 &&
+    validationErrors.length === 0;
 
   return (
     <div className="space-y-4 sm:space-y-6 py-3 sm:py-4">
@@ -143,12 +162,14 @@ export const WizardStep2 = ({ onComplete, onBack }: WizardStep2Props) => {
         <Calculator className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
         <div className="flex-1">
           <p className="text-blue-800 dark:text-blue-200">
-            <strong>Auto-calculation:</strong> Fill any 2 fields and the third will be calculated automatically using the formula: Volume = Flow Rate × Time
+            <strong>Auto-calculation:</strong> Fill any 2 fields and the third
+            will be calculated automatically using the formula: Volume = Flow
+            Rate × Time
           </p>
         </div>
-        <Button 
+        <Button
           onClick={handleClearAll}
-          variant="outline" 
+          variant="outline"
           size="sm"
           className="ml-2 h-6 px-2 text-xs border-blue-300 hover:bg-blue-100 dark:border-blue-700 dark:hover:bg-blue-900"
         >
@@ -204,7 +225,9 @@ export const WizardStep2 = ({ onComplete, onBack }: WizardStep2Props) => {
             placeholder="< 30 ml"
             className="h-10 sm:h-12 text-sm sm:text-base"
           />
-          <p className="text-xs text-muted-foreground">Must be less than 30 ml</p>
+          <p className="text-xs text-muted-foreground">
+            Must be less than 30 ml
+          </p>
         </div>
       </div>
 
@@ -220,7 +243,9 @@ export const WizardStep2 = ({ onComplete, onBack }: WizardStep2Props) => {
           <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-destructive flex-shrink-0 mt-0.5" />
           <div>
             {validationErrors.map((error, index) => (
-              <p key={index} className="text-destructive">{error}</p>
+              <p key={index} className="text-destructive">
+                {error}
+              </p>
             ))}
           </div>
         </div>
@@ -229,7 +254,10 @@ export const WizardStep2 = ({ onComplete, onBack }: WizardStep2Props) => {
       {/* Bolus Section */}
       <div className="space-y-3 sm:space-y-4 p-3 sm:p-4 border rounded-lg">
         <div className="flex items-center justify-between">
-          <Label htmlFor="bolus-enabled" className="text-sm sm:text-base font-semibold">
+          <Label
+            htmlFor="bolus-enabled"
+            className="text-sm sm:text-base font-semibold"
+          >
             Enable Bolus
           </Label>
           <Switch
@@ -241,7 +269,9 @@ export const WizardStep2 = ({ onComplete, onBack }: WizardStep2Props) => {
 
         {bolusEnabled && volume && (
           <div className="space-y-3 pt-2">
-            <Label className="text-sm sm:text-base">Bolus Volume: {bolusVolume.toFixed(1)} ml</Label>
+            <Label className="text-sm sm:text-base">
+              Bolus Volume: {bolusVolume.toFixed(1)} ml
+            </Label>
             <Slider
               value={[bolusVolume]}
               onValueChange={(values) => setBolusVolume(values[0])}
@@ -250,17 +280,26 @@ export const WizardStep2 = ({ onComplete, onBack }: WizardStep2Props) => {
               className="py-3 sm:py-4"
             />
             <p className="text-xs text-muted-foreground">
-              Bolus will deliver the initial portion at a higher rate for faster onset
+              Bolus will deliver the initial portion at a higher rate for faster
+              onset
             </p>
           </div>
         )}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 pt-4">
-        <Button onClick={onBack} variant="outline" className="flex-1 h-10 sm:h-12 text-sm sm:text-base">
+        <Button
+          onClick={onBack}
+          variant="outline"
+          className="flex-1 h-10 sm:h-12 text-sm sm:text-base"
+        >
           Back
         </Button>
-        <Button onClick={handleProceed} disabled={!isValid} className="flex-1 h-10 sm:h-12 text-sm sm:text-base">
+        <Button
+          onClick={handleProceed}
+          disabled={!isValid}
+          className="flex-1 h-10 sm:h-12 text-sm sm:text-base"
+        >
           Proceed Next
         </Button>
       </div>

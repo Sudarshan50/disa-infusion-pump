@@ -159,7 +159,7 @@ export interface DeviceState {
 }
 
 export const DUMMY_DEVICE_STATE: Record<string, DeviceState> = {
-  "PUMP_001": {
+  PUMP_001: {
     deviceId: "PUMP_001",
     status: "Running",
     location: "ICU Bay 3",
@@ -183,39 +183,79 @@ export const DUMMY_DEVICE_STATE: Record<string, DeviceState> = {
       volumeRemainingMl: 13,
     },
     notifications: [
-      { id: "n1", ts: "2025-10-01T08:41:00+05:30", text: "Calibration check due tomorrow." },
-      { id: "n2", ts: "2025-10-01T09:10:00+05:30", text: "IV line inspection reminder." },
+      {
+        id: "n1",
+        ts: "2025-10-01T08:41:00+05:30",
+        text: "Calibration check due tomorrow.",
+      },
+      {
+        id: "n2",
+        ts: "2025-10-01T09:10:00+05:30",
+        text: "IV line inspection reminder.",
+      },
     ],
     logs: [
-      { ts: "2025-10-01T08:45:00+05:30", deviceId: "PUMP_001", action: "start", actor: "Nurse K. Mehta", note: "Started per Dr. order" },
-      { ts: "2025-10-01T09:00:00+05:30", deviceId: "PUMP_001", action: "pause", actor: "Nurse K. Mehta", note: "Vitals check" },
-      { ts: "2025-10-01T09:05:00+05:30", deviceId: "PUMP_001", action: "resume", actor: "Nurse K. Mehta", note: "Resumed infusion" },
+      {
+        ts: "2025-10-01T08:45:00+05:30",
+        deviceId: "PUMP_001",
+        action: "start",
+        actor: "Nurse K. Mehta",
+        note: "Started per Dr. order",
+      },
+      {
+        ts: "2025-10-01T09:00:00+05:30",
+        deviceId: "PUMP_001",
+        action: "pause",
+        actor: "Nurse K. Mehta",
+        note: "Vitals check",
+      },
+      {
+        ts: "2025-10-01T09:05:00+05:30",
+        deviceId: "PUMP_001",
+        action: "resume",
+        actor: "Nurse K. Mehta",
+        note: "Resumed infusion",
+      },
     ],
   },
-  "PUMP_002": {
+  PUMP_002: {
     deviceId: "PUMP_002",
     status: "Healthy",
     location: "Ward 5 - Bed 12",
     notifications: [],
     logs: [],
   },
-  "PUMP_003": {
+  PUMP_003: {
     deviceId: "PUMP_003",
     status: "Issue",
     location: "OT-2",
     notifications: [
-      { id: "n3", ts: "2025-10-01T07:30:00+05:30", text: "Sensor error detected - maintenance required." },
+      {
+        id: "n3",
+        ts: "2025-10-01T07:30:00+05:30",
+        text: "Sensor error detected - maintenance required.",
+      },
     ],
     logs: [
-      { ts: "2025-10-01T07:30:00+05:30", deviceId: "PUMP_003", action: "stop", actor: "Nurse K. Mehta", note: "Sensor error" },
+      {
+        ts: "2025-10-01T07:30:00+05:30",
+        deviceId: "PUMP_003",
+        action: "stop",
+        actor: "Nurse K. Mehta",
+        note: "Sensor error",
+      },
     ],
   },
-  "PUMP_004": {
+  PUMP_004: {
     deviceId: "PUMP_004",
     status: "Degraded",
     location: "ICU Bay 1",
     notifications: [
-      { id: "n4", ts: "2025-09-30T22:15:00+05:30", text: "Device offline for extended period." },
+      {
+        id: "n4",
+        ts: "2025-09-30T22:15:00+05:30",
+        text: "Device offline for extended period.",
+      },
     ],
     logs: [],
   },

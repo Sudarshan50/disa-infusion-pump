@@ -105,15 +105,17 @@ const DeviceDashboard = () => {
   const progressPercent =
     deviceState.progress?.mode === "time"
       ? deviceState.infusion
-        ? ((deviceState.infusion.plannedTimeMin - deviceState.progress.timeRemainingMin) /
+        ? ((deviceState.infusion.plannedTimeMin -
+            deviceState.progress.timeRemainingMin) /
             deviceState.infusion.plannedTimeMin) *
           100
         : 0
       : deviceState.infusion
-      ? ((deviceState.infusion.plannedVolumeMl - deviceState.progress.volumeRemainingMl) /
-          deviceState.infusion.plannedVolumeMl) *
-        100
-      : 0;
+        ? ((deviceState.infusion.plannedVolumeMl -
+            deviceState.progress.volumeRemainingMl) /
+            deviceState.infusion.plannedVolumeMl) *
+          100
+        : 0;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -144,129 +146,154 @@ const DeviceDashboard = () => {
       </Card>
 
       {/* Running State */}
-      {deviceState.status === "Running" && deviceState.patient && deviceState.infusion && (
-        <div className="space-y-6">
-          {/* Controls - First */}
-          <Card className="glass">
-            <CardHeader>
-              <CardTitle>Controls</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <RunningDeviceActions
-                device={deviceAsDevice}
-                onUpdateDevice={handleUpdateDevice}
-              />
-            </CardContent>
-          </Card>
-
-          {/* Progress - Second */}
-          {deviceState.progress && (
+      {deviceState.status === "Running" &&
+        deviceState.patient &&
+        deviceState.infusion && (
+          <div className="space-y-6">
+            {/* Controls - First */}
             <Card className="glass">
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Progress</CardTitle>
-                  <Button variant="outline" size="sm" onClick={handleToggleProgress}>
-                    Switch to {deviceState.progress.mode === "time" ? "Volume" : "Time"}
-                  </Button>
-                </div>
+                <CardTitle>Controls</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {deviceState.progress.mode === "time" ? (
-                      <>
-                        <Clock className="h-5 w-5 text-primary" />
-                        <span className="font-medium">Time Remaining</span>
-                      </>
-                    ) : (
-                      <>
-                        <Droplets className="h-5 w-5 text-primary" />
-                        <span className="font-medium">Volume Remaining</span>
-                      </>
-                    )}
-                  </div>
-                  <span className="text-2xl font-bold text-primary">
-                    {deviceState.progress.mode === "time"
-                      ? `${deviceState.progress.timeRemainingMin} min`
-                      : `${deviceState.progress.volumeRemainingMl} ml`}
-                  </span>
-                </div>
-                <Progress value={progressPercent} className="h-3" />
-                <p className="text-sm text-muted-foreground text-center">
-                  {progressPercent.toFixed(1)}% complete
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Patient & Infusion Details - Third */}
-          <div className="grid md:grid-cols-2 gap-6">
-            <Card className="glass">
-              <CardHeader>
-                <CardTitle className="text-lg">Patient Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Name</p>
-                    <p className="font-medium">{deviceState.patient.name}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Age</p>
-                    <p className="font-medium">{deviceState.patient.age} years</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Weight</p>
-                    <p className="font-medium">{deviceState.patient.weight} kg</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Bed No.</p>
-                    <p className="font-medium">{deviceState.patient.bedNo}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Drug</p>
-                    <p className="font-medium">{deviceState.patient.drugInfused || "N/A"}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Allergies</p>
-                    <p className="font-medium">{deviceState.patient.allergies || "None"}</p>
-                  </div>
-                </div>
+              <CardContent>
+                <RunningDeviceActions
+                  device={deviceAsDevice}
+                  onUpdateDevice={handleUpdateDevice}
+                />
               </CardContent>
             </Card>
 
-            <Card className="glass">
-              <CardHeader>
-                <CardTitle className="text-lg">Infusion Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Flow Rate</p>
-                    <p className="font-medium">{deviceState.infusion.flowRateMlMin} ml/min</p>
+            {/* Progress - Second */}
+            {deviceState.progress && (
+              <Card className="glass">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">Progress</CardTitle>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleToggleProgress}
+                    >
+                      Switch to{" "}
+                      {deviceState.progress.mode === "time" ? "Volume" : "Time"}
+                    </Button>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Planned Time</p>
-                    <p className="font-medium">{deviceState.infusion.plannedTimeMin} min</p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {deviceState.progress.mode === "time" ? (
+                        <>
+                          <Clock className="h-5 w-5 text-primary" />
+                          <span className="font-medium">Time Remaining</span>
+                        </>
+                      ) : (
+                        <>
+                          <Droplets className="h-5 w-5 text-primary" />
+                          <span className="font-medium">Volume Remaining</span>
+                        </>
+                      )}
+                    </div>
+                    <span className="text-2xl font-bold text-primary">
+                      {deviceState.progress.mode === "time"
+                        ? `${deviceState.progress.timeRemainingMin} min`
+                        : `${deviceState.progress.volumeRemainingMl} ml`}
+                    </span>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Planned Volume</p>
-                    <p className="font-medium">{deviceState.infusion.plannedVolumeMl} ml</p>
+                  <Progress value={progressPercent} className="h-3" />
+                  <p className="text-sm text-muted-foreground text-center">
+                    {progressPercent.toFixed(1)}% complete
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Patient & Infusion Details - Third */}
+            <div className="grid md:grid-cols-2 gap-6">
+              <Card className="glass">
+                <CardHeader>
+                  <CardTitle className="text-lg">Patient Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Name</p>
+                      <p className="font-medium">{deviceState.patient.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Age</p>
+                      <p className="font-medium">
+                        {deviceState.patient.age} years
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Weight</p>
+                      <p className="font-medium">
+                        {deviceState.patient.weight} kg
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Bed No.</p>
+                      <p className="font-medium">{deviceState.patient.bedNo}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Drug</p>
+                      <p className="font-medium">
+                        {deviceState.patient.drugInfused || "N/A"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Allergies</p>
+                      <p className="font-medium">
+                        {deviceState.patient.allergies || "None"}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Bolus</p>
-                    <p className="font-medium">
-                      {deviceState.infusion.bolus.enabled
-                        ? `${deviceState.infusion.bolus.volumeMl} ml`
-                        : "Disabled"}
-                    </p>
+                </CardContent>
+              </Card>
+
+              <Card className="glass">
+                <CardHeader>
+                  <CardTitle className="text-lg">Infusion Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Flow Rate</p>
+                      <p className="font-medium">
+                        {deviceState.infusion.flowRateMlMin} ml/min
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        Planned Time
+                      </p>
+                      <p className="font-medium">
+                        {deviceState.infusion.plannedTimeMin} min
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        Planned Volume
+                      </p>
+                      <p className="font-medium">
+                        {deviceState.infusion.plannedVolumeMl} ml
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Bolus</p>
+                      <p className="font-medium">
+                        {deviceState.infusion.bolus.enabled
+                          ? `${deviceState.infusion.bolus.volumeMl} ml`
+                          : "Disabled"}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Healthy State */}
       {deviceState.status === "Healthy" && (
@@ -310,7 +337,8 @@ const DeviceDashboard = () => {
       )}
 
       {/* Other Status States */}
-      {(deviceState.status === "Issue" || deviceState.status === "Degraded") && (
+      {(deviceState.status === "Issue" ||
+        deviceState.status === "Degraded") && (
         <Card className="glass border-destructive/50">
           <CardContent className="pt-6 text-center space-y-2">
             <p className="font-semibold text-destructive">

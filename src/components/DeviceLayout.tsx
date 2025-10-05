@@ -40,8 +40,8 @@ const DeviceLayout = () => {
     };
 
     checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   // Close sidebar when route changes on mobile
@@ -72,144 +72,158 @@ const DeviceLayout = () => {
   return (
     <TooltipProvider>
       <div className="min-h-screen flex flex-col bg-gradient-to-br from-primary/5 via-background to-secondary/10">
-      {/* Top App Bar */}
-      <header className="bg-background/80 backdrop-blur-md border-b sticky top-0 z-50">
-        <div className="w-full px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-              className="flex-shrink-0"
+        {/* Top App Bar */}
+        <header className="bg-background/80 backdrop-blur-md border-b sticky top-0 z-50">
+          <div className="w-full px-4 h-16 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+                className="flex-shrink-0"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+              <span className="text-lg font-medium truncate">
+                Welcome, {DUMMY_ATTENDEE.name}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Profile Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="relative h-10 w-10 rounded-full"
+                  >
+                    <Avatar>
+                      <AvatarFallback className="bg-primary text-primary-foreground">
+                        {DUMMY_ATTENDEE.name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 glass">
+                  <div className="flex flex-col space-y-1 p-2">
+                    <p className="text-sm font-medium">{DUMMY_ATTENDEE.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {DUMMY_ATTENDEE.email}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Last login:{" "}
+                      {new Date(DUMMY_ATTENDEE.lastLogin).toLocaleString()}
+                    </p>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => navigate(`/device/${getDeviceId()}/profile`)}
+                  >
+                    <User className="mr-2 h-4 w-4" />
+                    Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </header>
+
+        <div className="flex flex-1 w-full relative">
+          {/* Mobile Backdrop */}
+          {sidebarOpen && (
+            <div
+              className="fixed inset-0 bg-black/50 z-30 md:hidden"
+              onClick={() => setSidebarOpen(false)}
+            />
+          )}
+
+          {/* Sidebar */}
+          <aside
+            className={cn(
+              "glass border-r transition-all duration-300 flex flex-col h-[calc(100vh-4rem)] z-40",
+              // Mobile: fixed positioning with slide animation
+              "fixed md:sticky top-16 left-0",
+              sidebarOpen
+                ? "w-64 translate-x-0"
+                : "w-64 -translate-x-full md:translate-x-0",
+              // Desktop: change width only, no translation
+              sidebarOpen ? "md:w-64" : "md:w-16",
+              // Prevent overflow issues in collapsed state
+              !sidebarOpen && "md:overflow-visible"
+            )}
+          >
+            <nav
+              className={cn(
+                "flex-1 space-y-2",
+                sidebarOpen ? "p-4" : "px-2 py-4"
+              )}
             >
-              <Menu className="h-5 w-5" />
-            </Button>
-            <span className="text-lg font-medium truncate">
-              Welcome, {DUMMY_ATTENDEE.name}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {/* Profile Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                  <Avatar>
-                    <AvatarFallback className="bg-primary text-primary-foreground">
-                      {DUMMY_ATTENDEE.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")}
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 glass">
-                <div className="flex flex-col space-y-1 p-2">
-                  <p className="text-sm font-medium">{DUMMY_ATTENDEE.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {DUMMY_ATTENDEE.email}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Last login:{" "}
-                    {new Date(DUMMY_ATTENDEE.lastLogin).toLocaleString()}
-                  </p>
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate(`/device/${getDeviceId()}/profile`)}>
-                  <User className="mr-2 h-4 w-4" />
-                  Profile
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Logout
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      </header>
-
-      <div className="flex flex-1 w-full relative">
-        {/* Mobile Backdrop */}
-        {sidebarOpen && (
-          <div 
-            className="fixed inset-0 bg-black/50 z-30 md:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-        
-        {/* Sidebar */}
-        <aside
-          className={cn(
-            "glass border-r transition-all duration-300 flex flex-col h-[calc(100vh-4rem)] z-40",
-            // Mobile: fixed positioning with slide animation
-            "fixed md:sticky top-16 left-0",
-            sidebarOpen 
-              ? "w-64 translate-x-0" 
-              : "w-64 -translate-x-full md:translate-x-0",
-            // Desktop: change width only, no translation
-            sidebarOpen 
-              ? "md:w-64" 
-              : "md:w-16",
-            // Prevent overflow issues in collapsed state
-            !sidebarOpen && "md:overflow-visible"
-          )}
-        >
-          <nav className={cn("flex-1 space-y-2", sidebarOpen ? "p-4" : "px-2 py-4")}>
-            {navItems.map((item) => {
-              const deviceId = getDeviceId();
-              const navContent = (
-                <NavLink
-                  key={item.path}
-                  to={`/device/${deviceId}${item.path}`}
-                  end={item.path === ""}
-                  className={({ isActive }) =>
-                    cn(
-                      "flex items-center rounded-xl transition-all hover:bg-accent text-foreground font-medium",
-                      isActive && "bg-primary text-primary-foreground hover:bg-primary/90",
-                      sidebarOpen ? "gap-3 px-4 py-3" : "justify-center p-2 w-12 h-12 mx-auto"
-                    )
-                  }
-                >
-                  <item.icon className={cn("h-5 w-5 flex-shrink-0", !sidebarOpen && "md:h-6 md:w-6")} />
-                  {sidebarOpen && <span className="whitespace-nowrap">{item.label}</span>}
-                </NavLink>
-              );
-
-              // Show tooltip only on desktop when sidebar is collapsed
-              if (!sidebarOpen && !isMobile) {
-                return (
-                  <Tooltip key={item.path}>
-                    <TooltipTrigger asChild>
-                      {navContent}
-                    </TooltipTrigger>
-                    <TooltipContent side="right">
-                      {item.label}
-                    </TooltipContent>
-                  </Tooltip>
+              {navItems.map((item) => {
+                const deviceId = getDeviceId();
+                const navContent = (
+                  <NavLink
+                    key={item.path}
+                    to={`/device/${deviceId}${item.path}`}
+                    end={item.path === ""}
+                    className={({ isActive }) =>
+                      cn(
+                        "flex items-center rounded-xl transition-all hover:bg-accent text-foreground font-medium",
+                        isActive &&
+                          "bg-primary text-primary-foreground hover:bg-primary/90",
+                        sidebarOpen
+                          ? "gap-3 px-4 py-3"
+                          : "justify-center p-2 w-12 h-12 mx-auto"
+                      )
+                    }
+                  >
+                    <item.icon
+                      className={cn(
+                        "h-5 w-5 flex-shrink-0",
+                        !sidebarOpen && "md:h-6 md:w-6"
+                      )}
+                    />
+                    {sidebarOpen && (
+                      <span className="whitespace-nowrap">{item.label}</span>
+                    )}
+                  </NavLink>
                 );
-              }
 
-              return navContent;
-            })}
-          </nav>
-        </aside>
+                // Show tooltip only on desktop when sidebar is collapsed
+                if (!sidebarOpen && !isMobile) {
+                  return (
+                    <Tooltip key={item.path}>
+                      <TooltipTrigger asChild>{navContent}</TooltipTrigger>
+                      <TooltipContent side="right">{item.label}</TooltipContent>
+                    </Tooltip>
+                  );
+                }
 
-        {/* Main Content */}
-        <main 
-          className={cn(
-            "flex-1 p-4 md:p-6 lg:p-8 w-full transition-all duration-300",
-            "min-h-[calc(100vh-4rem)] overflow-auto"
-          )}
-        >
-          <div className="container mx-auto max-w-7xl">
-            <Outlet />
-          </div>
-        </main>
+                return navContent;
+              })}
+            </nav>
+          </aside>
+
+          {/* Main Content */}
+          <main
+            className={cn(
+              "flex-1 p-4 md:p-6 lg:p-8 w-full transition-all duration-300",
+              "min-h-[calc(100vh-4rem)] overflow-auto"
+            )}
+          >
+            <div className="container mx-auto max-w-7xl">
+              <Outlet />
+            </div>
+          </main>
+        </div>
       </div>
-    </div>
     </TooltipProvider>
   );
 };

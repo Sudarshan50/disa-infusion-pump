@@ -117,15 +117,23 @@ export const PatientDetailsModal = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Flow Rate</p>
-                  <p className="font-semibold">{device.infusion.flowRateMlMin} ml/min</p>
+                  <p className="font-semibold">
+                    {device.infusion.flowRateMlMin} ml/min
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Planned Time</p>
-                  <p className="font-semibold">{device.infusion.plannedTimeMin} min</p>
+                  <p className="font-semibold">
+                    {device.infusion.plannedTimeMin} min
+                  </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Planned Volume</p>
-                  <p className="font-semibold">{device.infusion.plannedVolumeMl} ml</p>
+                  <p className="text-sm text-muted-foreground">
+                    Planned Volume
+                  </p>
+                  <p className="font-semibold">
+                    {device.infusion.plannedVolumeMl} ml
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Bolus</p>
@@ -150,7 +158,9 @@ export const PatientDetailsModal = ({
                     <Droplet className="h-5 w-5" />
                   )}
                   <h3>
-                    {progressMode === "time" ? "Time Remaining" : "Volume Remaining"}
+                    {progressMode === "time"
+                      ? "Time Remaining"
+                      : "Volume Remaining"}
                   </h3>
                 </div>
                 <Button variant="outline" size="sm" onClick={handleToggleMode}>
@@ -161,12 +171,16 @@ export const PatientDetailsModal = ({
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Progress</span>
-                  <span className="font-semibold">{Math.round(getProgressValue())}%</span>
+                  <span className="font-semibold">
+                    {Math.round(getProgressValue())}%
+                  </span>
                 </div>
                 <Progress value={getProgressValue()} className="h-3" />
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Remaining</span>
-                  <span className="font-semibold text-primary">{getRemainingValue()}</span>
+                  <span className="font-semibold text-primary">
+                    {getRemainingValue()}
+                  </span>
                 </div>
               </div>
             </div>

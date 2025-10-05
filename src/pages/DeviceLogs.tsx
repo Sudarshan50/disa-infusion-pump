@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { DUMMY_LOGS, DeviceLog } from "@/data/dummyData";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { FileText, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -38,8 +44,12 @@ const DeviceLogs = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">Device Logs</h1>
-        <p className="text-muted-foreground">View activity history for all devices</p>
+        <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
+          Device Logs
+        </h1>
+        <p className="text-muted-foreground">
+          View activity history for all devices
+        </p>
       </div>
 
       <Card className="glass border-2">
@@ -50,7 +60,9 @@ const DeviceLogs = () => {
             </div>
             <div className="flex-1">
               <CardTitle>Activity Log</CardTitle>
-              <CardDescription>Complete history of device operations</CardDescription>
+              <CardDescription>
+                Complete history of device operations
+              </CardDescription>
             </div>
           </div>
           <div className="pt-4">
@@ -70,28 +82,46 @@ const DeviceLogs = () => {
             <table className="w-full">
               <thead>
                 <tr className="border-b">
-                  <th className="text-left py-3 px-4 font-semibold text-sm">Timestamp</th>
-                  <th className="text-left py-3 px-4 font-semibold text-sm">Device ID</th>
-                  <th className="text-left py-3 px-4 font-semibold text-sm">Action</th>
-                  <th className="text-left py-3 px-4 font-semibold text-sm">Actor</th>
-                  <th className="text-left py-3 px-4 font-semibold text-sm">Note</th>
+                  <th className="text-left py-3 px-4 font-semibold text-sm">
+                    Timestamp
+                  </th>
+                  <th className="text-left py-3 px-4 font-semibold text-sm">
+                    Device ID
+                  </th>
+                  <th className="text-left py-3 px-4 font-semibold text-sm">
+                    Action
+                  </th>
+                  <th className="text-left py-3 px-4 font-semibold text-sm">
+                    Actor
+                  </th>
+                  <th className="text-left py-3 px-4 font-semibold text-sm">
+                    Note
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {filteredLogs.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-center py-8 text-muted-foreground">
+                    <td
+                      colSpan={5}
+                      className="text-center py-8 text-muted-foreground"
+                    >
                       No logs found matching your search
                     </td>
                   </tr>
                 ) : (
                   filteredLogs.map((log, index) => (
-                    <tr key={index} className="border-b hover:bg-accent/30 transition-colors">
+                    <tr
+                      key={index}
+                      className="border-b hover:bg-accent/30 transition-colors"
+                    >
                       <td className="py-3 px-4 text-sm">
                         {new Date(log.ts).toLocaleString()}
                       </td>
                       <td className="py-3 px-4">
-                        <span className="font-mono text-sm font-semibold">{log.deviceId}</span>
+                        <span className="font-mono text-sm font-semibold">
+                          {log.deviceId}
+                        </span>
                       </td>
                       <td className="py-3 px-4">
                         <Badge className={getActionColor(log.action)}>
@@ -99,7 +129,9 @@ const DeviceLogs = () => {
                         </Badge>
                       </td>
                       <td className="py-3 px-4 text-sm">{log.actor}</td>
-                      <td className="py-3 px-4 text-sm text-muted-foreground">{log.note}</td>
+                      <td className="py-3 px-4 text-sm text-muted-foreground">
+                        {log.note}
+                      </td>
                     </tr>
                   ))
                 )}

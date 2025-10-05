@@ -119,8 +119,8 @@ export const StartInfusionWizard = ({
                   s === step
                     ? "bg-primary text-primary-foreground ring-2 sm:ring-4 ring-primary/20"
                     : s < step
-                    ? "bg-primary/20 text-primary"
-                    : "bg-muted text-muted-foreground"
+                      ? "bg-primary/20 text-primary"
+                      : "bg-muted text-muted-foreground"
                 }`}
               >
                 {s}
@@ -137,12 +137,19 @@ export const StartInfusionWizard = ({
         </div>
 
         <div className="text-center mb-4">
-          <h3 className="text-lg font-semibold text-primary">{getStepTitle()}</h3>
+          <h3 className="text-lg font-semibold text-primary">
+            {getStepTitle()}
+          </h3>
         </div>
 
         {/* Step Content */}
         {step === 1 && <WizardStep1 onComplete={handleStep1Complete} />}
-        {step === 2 && <WizardStep2 onComplete={handleStep2Complete} onBack={() => setStep(1)} />}
+        {step === 2 && (
+          <WizardStep2
+            onComplete={handleStep2Complete}
+            onBack={() => setStep(1)}
+          />
+        )}
         {step === 3 && (
           <WizardStep3
             patientData={patientData}

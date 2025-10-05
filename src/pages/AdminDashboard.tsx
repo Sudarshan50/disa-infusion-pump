@@ -1,7 +1,13 @@
 import { useState } from "react";
 import { Device, DUMMY_DEVICES } from "@/data/dummyData";
 import { DeviceRow } from "@/components/DeviceRow";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Activity } from "lucide-react";
 import { Footer } from "@/components/Footer";
 
@@ -45,7 +51,9 @@ const AdminDashboard = () => {
             </div>
             <div>
               <CardTitle>Device Metrics</CardTitle>
-              <CardDescription>Real-time status of all infusion pumps</CardDescription>
+              <CardDescription>
+                Real-time status of all infusion pumps
+              </CardDescription>
             </div>
           </div>
         </CardHeader>

@@ -23,7 +23,9 @@ export const DeviceRow = ({
 }: DeviceRowProps) => {
   // Helper function to get device location
   const getDeviceLocation = (deviceId: string) => {
-    const deviceInfo = DUMMY_DEVICE_DIRECTORY.find(d => d.deviceId === deviceId);
+    const deviceInfo = DUMMY_DEVICE_DIRECTORY.find(
+      (d) => d.deviceId === deviceId
+    );
     return deviceInfo?.location || "Unknown Location";
   };
 
@@ -47,7 +49,10 @@ export const DeviceRow = ({
             )}
           </div>
           <div className="flex items-center justify-between">
-            <StatusChip status={device.status} showPulse={device.status === "Running"} />
+            <StatusChip
+              status={device.status}
+              showPulse={device.status === "Running"}
+            />
             <div className="flex items-center gap-1 text-muted-foreground">
               <MapPin className="h-3 w-3 flex-shrink-0" />
               <span className="text-xs truncate max-w-[120px]">
@@ -63,8 +68,11 @@ export const DeviceRow = ({
             <span className="font-mono font-semibold text-sm md:text-base whitespace-nowrap">
               {device.deviceId}
             </span>
-            <StatusChip status={device.status} showPulse={device.status === "Running"} />
-            
+            <StatusChip
+              status={device.status}
+              showPulse={device.status === "Running"}
+            />
+
             {/* Location Display */}
             <div className="flex items-center gap-1.5 text-muted-foreground min-w-0">
               <MapPin className="h-4 w-4 flex-shrink-0" />
@@ -87,11 +95,17 @@ export const DeviceRow = ({
           <Card className="glass-dark">
             <div className="p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               <div>
-                <p className="text-xs sm:text-sm text-muted-foreground">Device ID</p>
-                <p className="font-mono font-semibold text-sm sm:text-base">{device.deviceId}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  Device ID
+                </p>
+                <p className="font-mono font-semibold text-sm sm:text-base">
+                  {device.deviceId}
+                </p>
               </div>
               <div>
-                <p className="text-xs sm:text-sm text-muted-foreground">Location</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  Location
+                </p>
                 <div className="flex items-center gap-1.5 mt-1">
                   <MapPin className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
                   <p className="font-semibold text-sm sm:text-base truncate">
@@ -100,13 +114,22 @@ export const DeviceRow = ({
                 </div>
               </div>
               <div>
-                <p className="text-xs sm:text-sm text-muted-foreground">Infusions Completed</p>
-                <p className="font-semibold text-sm sm:text-base">{device.infusionsCompleted}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  Infusions Completed
+                </p>
+                <p className="font-semibold text-sm sm:text-base">
+                  {device.infusionsCompleted}
+                </p>
               </div>
               <div>
-                <p className="text-xs sm:text-sm text-muted-foreground">Current Status</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  Current Status
+                </p>
                 <div className="mt-1">
-                  <StatusChip status={device.status} showPulse={device.status === "Running"} />
+                  <StatusChip
+                    status={device.status}
+                    showPulse={device.status === "Running"}
+                  />
                 </div>
               </div>
             </div>
@@ -115,16 +138,24 @@ export const DeviceRow = ({
           {device.status === "Degraded" && (
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground bg-destructive/10 p-2 sm:p-3 rounded-lg">
               <span className="text-destructive font-medium">Last online:</span>
-              <span className="break-all sm:break-normal">{new Date(device.lastOnline).toLocaleString()}</span>
+              <span className="break-all sm:break-normal">
+                {new Date(device.lastOnline).toLocaleString()}
+              </span>
             </div>
           )}
 
           {/* Actions based on status */}
           <div className="space-y-3 sm:space-y-4">
             {device.status === "Running" ? (
-              <RunningDeviceActions device={device} onUpdateDevice={onUpdateDevice} />
+              <RunningDeviceActions
+                device={device}
+                onUpdateDevice={onUpdateDevice}
+              />
             ) : (
-              <IdleDeviceActions device={device} onUpdateDevice={onUpdateDevice} />
+              <IdleDeviceActions
+                device={device}
+                onUpdateDevice={onUpdateDevice}
+              />
             )}
           </div>
         </div>

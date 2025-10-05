@@ -75,15 +75,21 @@ export const ConfirmActionModal = ({
             </DialogTitle>
           </div>
           <DialogDescription className="pt-3 sm:pt-4 text-sm sm:text-base">
-            You are about to <span className={`font-semibold ${getActionColor()}`}>{action}</span>{" "}
-            the infusion on device <span className="font-mono font-semibold">{deviceId}</span>.
+            You are about to{" "}
+            <span className={`font-semibold ${getActionColor()}`}>
+              {action}
+            </span>{" "}
+            the infusion on device{" "}
+            <span className="font-mono font-semibold">{deviceId}</span>.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3 sm:space-y-4 py-3 sm:py-4">
           <div className="space-y-2">
             <Label htmlFor="confirm-text" className="text-sm sm:text-base">
-              Type <span className="font-mono font-bold">&quot;{action}&quot;</span> to confirm
+              Type{" "}
+              <span className="font-mono font-bold">&quot;{action}&quot;</span>{" "}
+              to confirm
             </Label>
             <Input
               id="confirm-text"
@@ -98,7 +104,11 @@ export const ConfirmActionModal = ({
         </div>
 
         <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1 h-10 sm:h-12 text-sm sm:text-base">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            className="flex-1 h-10 sm:h-12 text-sm sm:text-base"
+          >
             Cancel
           </Button>
           <Button
