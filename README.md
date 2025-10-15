@@ -1,73 +1,113 @@
-# Welcome to your Lovable project
+# Infusion Backend
 
-## Project info
+A Node.js Express server with Morgan logging and proper MVC architecture.
 
-**URL**: https://lovable.dev/projects/e3feeb5b-7453-4370-949e-e9f84e3688f7
+## Features
 
-## How can I edit this code?
+- 🚀 Express.js server with proper middleware setup
+- 📝 Morgan HTTP request logging
+- 🔄 CORS enabled
+- 🏗️ MVC architecture with organized file structure
+- 🛣️ RESTful API routes
+- 🔧 Environment configuration
+- 📦 Modular design with separate controllers and utilities
 
-There are several ways of editing your application.
+## Project Structure
 
-**Use Lovable**
+```
+infusion-backend/
+├── src/
+│   ├── config/
+│   │   └── config.js          # Application configuration
+│   ├── controllers/
+│   │   ├── authController.js   # Authentication controllers
+│   │   └── userController.js   # User controllers
+│   ├── lib/
+│   │   ├── database.js         # Database utilities
+│   │   ├── responseUtils.js    # Response formatting utilities
+│   │   └── validators.js       # Validation utilities
+│   ├── middleware/
+│   │   └── auth.js            # Custom middleware
+│   └── routes/
+│       ├── index.js           # Main route handler
+│       ├── authRoutes.js      # Authentication routes
+│       └── userRoutes.js      # User routes
+├── .env.example               # Environment variables template
+├── .gitignore
+├── index.js                   # Main application entry point
+├── package.json
+└── README.md
+```
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/e3feeb5b-7453-4370-949e-e9f84e3688f7) and start prompting.
+## Installation
 
-Changes made via Lovable will be committed automatically to this repo.
+1. Clone the repository
+2. Install dependencies:
 
-**Use your preferred IDE**
+   ```bash
+   npm install
+   ```
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+3. Create environment file:
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+   ```bash
+   cp .env.example .env
+   ```
 
-Follow these steps:
+4. Update the `.env` file with your configuration
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## Scripts
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+- `npm start` - Start the production server
+- `npm run dev` - Start the development server with nodemon (install nodemon first: `npm install -g nodemon`)
 
-# Step 3: Install the necessary dependencies.
-npm i
+## API Endpoints
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+### Health Check
+
+- `GET /health` - Server health check
+
+### API Base
+
+- `GET /api` - API information
+
+### Authentication
+
+- `POST /api/auth/login` - User login
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/logout` - User logout
+- `GET /api/auth/me` - Get current user profile
+
+### Users
+
+- `GET /api/users` - Get all users
+- `GET /api/users/:id` - Get user by ID
+- `POST /api/users` - Create new user
+- `PUT /api/users/:id` - Update user
+- `DELETE /api/users/:id` - Delete user
+
+## Usage
+
+Start the server:
+
+```bash
+npm start
+```
+
+The server will be running on `http://localhost:3000`
+
+## Development
+
+For development with auto-restart:
+
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Configuration
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+The application uses environment variables for configuration. See `.env.example` for available options.
 
-**Use GitHub Codespaces**
+## License
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/e3feeb5b-7453-4370-949e-e9f84e3688f7) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+ISC

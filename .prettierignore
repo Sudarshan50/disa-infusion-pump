@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Build outputs
+dist/
+build/
+
+# Environment files
+.env
+.env.*
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+
+# IDE files
+.vscode/
+.idea/
+
+# Coverage reports
+coverage/
+
+# Documentation (optional - remove if you want to format docs)
+# docs/
+# README.md
+
+# Test files that might have specific formatting needs
+# tests/

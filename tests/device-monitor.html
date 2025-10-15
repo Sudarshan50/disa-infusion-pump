@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Device Monitor - Real-time Updates</title>
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+      .header {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      .connection-status {
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+        text-align: center;
+        font-weight: bold;
+      }
+      .connected {
+        background-color: #d4edda;
+        color: #155724;
+      }
+      .disconnected {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+      .device-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+      }
+      .device-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .device-id {
+        font-size: 1.2em;
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: #333;
+      }
+      .status-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.8em;
+        font-weight: bold;
+        margin-bottom: 10px;
+      }
+      .status-running {
+        background-color: #28a745;
+        color: white;
+      }
+      .status-paused {
+        background-color: #ffc107;
+        color: black;
+      }
+      .status-stopped {
+        background-color: #dc3545;
+        color: white;
+      }
+      .status-healthy {
+        background-color: #17a2b8;
+        color: white;
+      }
+      .status-degraded {
+        background-color: #6c757d;
+        color: white;
+      }
+      .status-issue {
+        background-color: #fd7e14;
+        color: white;
+      }
+      .status-unknown {
+        background-color: #e9ecef;
+        color: black;
+      }
+      .info-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        padding: 5px 0;
+        border-bottom: 1px solid #eee;
+      }
+      .info-label {
+        font-weight: bold;
+        color: #666;
+      }
+      .info-value {
+        color: #333;
+      }
+      .subscribe-controls {
+        margin-bottom: 20px;
+        padding: 15px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .controls {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      input,
+      button {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      button {
+        background-color: #007bff;
+        color: white;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      .unsubscribe {
+        background-color: #dc3545;
+      }
+      .unsubscribe:hover {
+        background-color: #c82333;
+      }
+      .timestamp {
+        font-size: 0.8em;
+        color: #999;
+      }
+      .error-section {
+        margin-top: 15px;
+        padding: 10px;
+        border-radius: 5px;
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+      }
+      .error-title {
+        font-weight: bold;
+        color: #721c24;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .error-details {
+        font-size: 0.9em;
+        color: #721c24;
+      }
+      .error-code {
+        font-family: monospace;
+        background-color: #f1f1f1;
+        padding: 2px 4px;
+        border-radius: 3px;
+      }
+      .no-error {
+        background-color: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>🏥 Infusion Pump Monitor</h1>
+      <div id="connectionStatus" class="connection-status disconnected">
+        🔴 Disconnected
+      </div>
+    </div>
+
+    <div class="subscribe-controls">
+      <h3>Device Subscription</h3>
+      <div class="controls">
+        <input
+          type="text"
+          id="deviceIdInput"
+          placeholder="Enter Device ID (e.g., PUMP_0001)"
+          value="PUMP_0001"
+        />
+        <button onclick="subscribeToDevice()">📡 Subscribe</button>
+        <button onclick="unsubscribeFromDevice()" class="unsubscribe">
+          ❌ Unsubscribe
+        </button>
+      </div>
+    </div>
+
+    <div id="deviceGrid" class="device-grid">
+      <!-- Device cards will be added here dynamically -->
+    </div>
+
+    <script>
+      // Initialize Socket.IO connection
+      const socket = io("http://localhost:3000");
+      const devices = new Set();
+
+      // Connection status
+      const connectionStatus = document.getElementById("connectionStatus");
+
+      socket.on("connect", () => {
+        connectionStatus.textContent = "🟢 Connected";
+        connectionStatus.className = "connection-status connected";
+        console.log("🔌 Connected to server:", socket.id);
+      });
+
+      socket.on("disconnect", () => {
+        connectionStatus.textContent = "🔴 Disconnected";
+        connectionStatus.className = "connection-status disconnected";
+        console.log("🔌 Disconnected from server");
+      });
+
+      // Device status updates
+      socket.on("device:status:update", (data) => {
+        console.log("📊 Status Update:", data);
+        updateDeviceStatus(data);
+      });
+
+      // Device progress updates
+      socket.on("device:progress:update", (data) => {
+        console.log("📈 Progress Update:", data);
+        updateDeviceProgress(data);
+      });
+
+      // Device error notifications
+      socket.on("device:error", (data) => {
+        console.log("🚨 Error Notification:", data);
+        updateDeviceError(data);
+      });
+
+      // Error handling
+      socket.on("error", (error) => {
+        console.error("❌ Socket Error:", error);
+        alert("Error: " + error.message);
+      });
+
+      function subscribeToDevice() {
+        const deviceId = document.getElementById("deviceIdInput").value.trim();
+        if (!deviceId) {
+          alert("Please enter a device ID");
+          return;
+        }
+
+        devices.add(deviceId);
+        createDeviceCard(deviceId);
+
+        // Subscribe to status, progress, and errors
+        socket.emit("subscribe:device:status", deviceId);
+        socket.emit("subscribe:device:progress", deviceId);
+        socket.emit("subscribe:device:errors", deviceId);
+
+        console.log(
+          `📡 Subscribed to ${deviceId} (status, progress, and errors)`
+        );
+      }
+
+      function unsubscribeFromDevice() {
+        const deviceId = document.getElementById("deviceIdInput").value.trim();
+        if (!deviceId) {
+          alert("Please enter a device ID");
+          return;
+        }
+
+        devices.delete(deviceId);
+        removeDeviceCard(deviceId);
+
+        // Unsubscribe from status, progress, and errors
+        socket.emit("unsubscribe:device:status", deviceId);
+        socket.emit("unsubscribe:device:progress", deviceId);
+        socket.emit("unsubscribe:device:errors", deviceId);
+
+        console.log(`📡 Unsubscribed from ${deviceId}`);
+      }
+
+      function createDeviceCard(deviceId) {
+        if (document.getElementById(`device-${deviceId}`)) {
+          return; // Card already exists
+        }
+
+        const deviceGrid = document.getElementById("deviceGrid");
+        const card = document.createElement("div");
+        card.id = `device-${deviceId}`;
+        card.className = "device-card";
+        card.innerHTML = `
+                <div class="device-id">${deviceId}</div>
+                <div class="status-badge status-unknown" id="status-${deviceId}">Unknown</div>
+                
+                <div class="info-row">
+                    <span class="info-label">Last Ping:</span>
+                    <span class="info-value" id="lastping-${deviceId}">Never</span>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">Time Remaining:</span>
+                    <span class="info-value" id="time-${deviceId}">--</span>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">Volume Remaining:</span>
+                    <span class="info-value" id="volume-${deviceId}">--</span>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">Last Update:</span>
+                    <span class="info-value timestamp" id="timestamp-${deviceId}">--</span>
+                </div>
+                
+                <div id="error-section-${deviceId}" class="error-section no-error">
+                    <div class="error-title">
+                        🟢 Device Status
+                    </div>
+                    <div class="error-details">
+                        No errors reported
+                    </div>
+                </div>
+            `;
+        deviceGrid.appendChild(card);
+      }
+
+      function removeDeviceCard(deviceId) {
+        const card = document.getElementById(`device-${deviceId}`);
+        if (card) {
+          card.remove();
+        }
+      }
+
+      function updateDeviceStatus(data) {
+        const { deviceId, status, lastPing, timestamp } = data;
+
+        // Create card if it doesn't exist
+        if (!document.getElementById(`device-${deviceId}`)) {
+          createDeviceCard(deviceId);
+        }
+
+        // Update status badge
+        const statusElement = document.getElementById(`status-${deviceId}`);
+        if (statusElement) {
+          statusElement.textContent = status.toUpperCase();
+          statusElement.className = `status-badge status-${status}`;
+        }
+
+        // Update last ping
+        const lastPingElement = document.getElementById(`lastping-${deviceId}`);
+        if (lastPingElement) {
+          lastPingElement.textContent = lastPing || "Never";
+        }
+
+        // Update timestamp
+        const timestampElement = document.getElementById(
+          `timestamp-${deviceId}`
+        );
+        if (timestampElement) {
+          timestampElement.textContent = new Date(
+            timestamp
+          ).toLocaleTimeString();
+        }
+      }
+
+      function updateDeviceProgress(data) {
+        const { deviceId, progress, timestamp } = data;
+
+        // Create card if it doesn't exist
+        if (!document.getElementById(`device-${deviceId}`)) {
+          createDeviceCard(deviceId);
+        }
+
+        if (progress) {
+          const { timeRemainingMin, volumeRemainingMl } = progress;
+
+          // Update time remaining
+          const timeElement = document.getElementById(`time-${deviceId}`);
+          if (timeElement) {
+            timeElement.textContent = `${timeRemainingMin} min`;
+          }
+
+          // Update volume remaining
+          const volumeElement = document.getElementById(`volume-${deviceId}`);
+          if (volumeElement) {
+            volumeElement.textContent = `${volumeRemainingMl} ml`;
+          }
+        } else {
+          // No progress data
+          const timeElement = document.getElementById(`time-${deviceId}`);
+          const volumeElement = document.getElementById(`volume-${deviceId}`);
+          if (timeElement) timeElement.textContent = "--";
+          if (volumeElement) volumeElement.textContent = "--";
+        }
+
+        // Update timestamp
+        const timestampElement = document.getElementById(
+          `timestamp-${deviceId}`
+        );
+        if (timestampElement) {
+          timestampElement.textContent = new Date(
+            timestamp
+          ).toLocaleTimeString();
+        }
+      }
+
+      function updateDeviceError(data) {
+        const { deviceId, error, timestamp } = data;
+
+        // Create card if it doesn't exist
+        if (!document.getElementById(`device-${deviceId}`)) {
+          createDeviceCard(deviceId);
+        }
+
+        const errorSection = document.getElementById(
+          `error-section-${deviceId}`
+        );
+        if (!errorSection) return;
+
+        if (error && error.type && error.message) {
+          // Display error information
+          errorSection.className = "error-section";
+          errorSection.innerHTML = `
+                    <div class="error-title">
+                        🚨 Device Error Detected
+                    </div>
+                    <div class="error-details">
+                        <div><strong>Type:</strong> <span class="error-code">${error.type}</span></div>
+                        <div><strong>Message:</strong> ${error.message}</div>
+                        <div><strong>Time:</strong> ${new Date(timestamp).toLocaleString()}</div>
+                    </div>
+                `;
+
+          // Flash the card to draw attention
+          const card = document.getElementById(`device-${deviceId}`);
+          if (card) {
+            card.style.border = "2px solid #dc3545";
+            setTimeout(() => {
+              card.style.border = "";
+            }, 3000);
+          }
+        } else {
+          // No error or error cleared
+          errorSection.className = "error-section no-error";
+          errorSection.innerHTML = `
+                    <div class="error-title">
+                        🟢 Device Status
+                    </div>
+                    <div class="error-details">
+                        No errors reported
+                    </div>
+                `;
+        }
+      }
+
+      // Auto-subscribe to PUMP_0001 for demo
+      window.onload = () => {
+        setTimeout(() => {
+          subscribeToDevice();
+        }, 1000);
+      };
+    </script>
+  </body>
+</html>
