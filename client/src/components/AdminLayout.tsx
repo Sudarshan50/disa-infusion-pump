@@ -16,13 +16,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Home, FileText, Menu, X } from "lucide-react";
-import { DUMMY_ADMIN } from "@/data/dummyData";
+import { Home, FileText, Menu, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 const AdminLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, logout, isLoading } = useAuth();
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true); // Start open on desktop, will be adjusted for mobile
   const [isMobile, setIsMobile] = useState(false);
@@ -55,9 +56,10 @@ const AdminLayout = () => {
 
   const handleLogout = () => {
     console.log("🚪 Admin Logout", {
-      admin: DUMMY_ADMIN.name,
+      admin: user?.email,
       timestamp: new Date().toISOString(),
     });
+    logout();
     navigate("/");
   };
 
@@ -66,13 +68,27 @@ const AdminLayout = () => {
     { icon: FileText, label: "Device Logs", path: "/admin/logs" },
   ];
 
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
+  const getInitials = (email: string) => {
+    return email
+      .split("@")[0]
+      .split(".")
       .map((n) => n[0])
       .join("")
-      .toUpperCase();
+      .toUpperCase()
+      .slice(0, 2);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <TooltipProvider>
@@ -91,7 +107,7 @@ const AdminLayout = () => {
                 <Menu className="h-5 w-5" />
               </Button>
               <h2 className="text-lg font-semibold text-foreground truncate">
-                Welcome, {DUMMY_ADMIN.name}
+                Welcome, {user.email.split('@')[0]}
               </h2>
             </div>
 
@@ -104,7 +120,7 @@ const AdminLayout = () => {
                   >
                     <Avatar className="h-10 w-10 border-2 border-primary">
                       <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
-                        {getInitials(DUMMY_ADMIN.name)}
+                        {getInitials(user.email)}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
@@ -112,17 +128,12 @@ const AdminLayout = () => {
                 <DropdownMenuContent className="w-56 glass" align="end">
                   <DropdownMenuLabel>
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium">{DUMMY_ADMIN.name}</p>
+                      <p className="text-sm font-medium">{user.email.split('@')[0]}</p>
                       <p className="text-xs text-muted-foreground">
-                        {DUMMY_ADMIN.email}
+                        {user.email}
                       </p>
                     </div>
                   </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem disabled className="text-xs">
-                    Last login:{" "}
-                    {new Date(DUMMY_ADMIN.lastLogin).toLocaleString()}
-                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => navigate("/admin/profile")}>
                     Profile

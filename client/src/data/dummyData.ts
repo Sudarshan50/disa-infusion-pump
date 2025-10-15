@@ -11,7 +11,7 @@ export const DUMMY_ATTENDEE = {
 };
 
 export const DUMMY_DEVICE_DIRECTORY = [
-  { deviceId: "PUMP_001", location: "ICU Bay 3" },
+  { deviceId: "PUMP_0001", location: "ICU Bay 3" },
   { deviceId: "PUMP_002", location: "Ward 5 - Bed 12" },
   { deviceId: "PUMP_003", location: "OT-2" },
   { deviceId: "PUMP_004", location: "ICU Bay 1" },
@@ -159,8 +159,8 @@ export interface DeviceState {
 }
 
 export const DUMMY_DEVICE_STATE: Record<string, DeviceState> = {
-  PUMP_001: {
-    deviceId: "PUMP_001",
+  PUMP_0001: {
+    deviceId: "PUMP_0001",
     status: "Running",
     location: "ICU Bay 3",
     patient: {

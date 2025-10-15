@@ -5,6 +5,7 @@ import { authorizeRoles } from "../middleware/authHandler.js";
 const deviceRouter = e.Router();
 
 deviceRouter.post("/create", device.create);
+deviceRouter.get("/:deviceId", authorizeRoles("admin","attendee"), device.getDetailsById);
 deviceRouter.post("/health", device.createHealthCheck);
 
 // Device control endpoints

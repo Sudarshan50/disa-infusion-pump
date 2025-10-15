@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Outlet, useNavigate, NavLink, useLocation } from "react-router-dom";
-import { Menu, Home, FileText, LogOut, User } from "lucide-react";
+import { Outlet, useNavigate, NavLink, useLocation, useParams } from "react-router-dom";
+import { Menu, Home, FileText, LogOut, User, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -16,14 +16,23 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { DUMMY_ATTENDEE } from "@/data/dummyData";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 const DeviceLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { deviceId } = useParams();
+  const { user, logout, isLoading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true); // Start open on desktop, will be adjusted for mobile
   const [isMobile, setIsMobile] = useState(false);
+
+  // Redirect if device ID doesn't match user's assigned device
+  useEffect(() => {
+    if (!isLoading && user?.role === 'attendee' && user.deviceId && deviceId && user.deviceId !== deviceId) {
+      navigate(`/device/${user.deviceId}`);
+    }
+  }, [user, deviceId, navigate, isLoading]);
 
   // Check if we're on mobile
   useEffect(() => {
@@ -53,9 +62,11 @@ const DeviceLayout = () => {
 
   const handleLogout = () => {
     console.log("🚪 Device Logout", {
-      attendee: DUMMY_ATTENDEE.name,
+      attendee: user?.email,
+      deviceId: user?.deviceId,
       timestamp: new Date().toISOString(),
     });
+    logout();
     navigate("/");
   };
 
@@ -65,9 +76,30 @@ const DeviceLayout = () => {
   ];
 
   const getDeviceId = () => {
-    const match = location.pathname.match(/\/device\/([^/]+)/);
-    return match ? match[1] : "";
+    return user?.deviceId || deviceId || "";
   };
+
+  const getInitials = (email: string) => {
+    return email
+      .split("@")[0]
+      .split(".")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <TooltipProvider>
@@ -86,7 +118,7 @@ const DeviceLayout = () => {
                 <Menu className="h-5 w-5" />
               </Button>
               <span className="text-lg font-medium truncate">
-                Welcome, {DUMMY_ATTENDEE.name}
+                Welcome, {user.email.split('@')[0]}
               </span>
             </div>
 
@@ -100,23 +132,19 @@ const DeviceLayout = () => {
                   >
                     <Avatar>
                       <AvatarFallback className="bg-primary text-primary-foreground">
-                        {DUMMY_ATTENDEE.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")}
+                        {getInitials(user.email)}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56 glass">
                   <div className="flex flex-col space-y-1 p-2">
-                    <p className="text-sm font-medium">{DUMMY_ATTENDEE.name}</p>
+                    <p className="text-sm font-medium">{user.email.split('@')[0]}</p>
                     <p className="text-xs text-muted-foreground">
-                      {DUMMY_ATTENDEE.email}
+                      {user.email}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Last login:{" "}
-                      {new Date(DUMMY_ATTENDEE.lastLogin).toLocaleString()}
+                      Device: {user.deviceId}
                     </p>
                   </div>
                   <DropdownMenuSeparator />

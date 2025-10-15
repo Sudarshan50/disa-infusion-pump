@@ -11,77 +11,108 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Activity, AlertCircle } from "lucide-react";
-import {
-  DUMMY_ADMIN,
-  DUMMY_DEVICE_DIRECTORY,
-  DUMMY_ATTENDEE,
-} from "@/data/dummyData";
+import { Activity, AlertCircle, Loader2 } from "lucide-react";
 import { Footer } from "@/components/Footer";
+import { useAuth } from "@/hooks/useAuth";
+import { useEffect } from "react";
 
 const Login = () => {
   const navigate = useNavigate();
   const { deviceId: urlDeviceId } = useParams();
+  const { login, isAuthenticated, user, isLoading: authLoading } = useAuth();
+  
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [attendeeEmail, setAttendeeEmail] = useState("");
   const [attendeePassword, setAttendeePassword] = useState("");
+  const [error, setError] = useState("");
   const [deviceError, setDeviceError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleAdminLogin = (e: React.FormEvent) => {
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated && user && !authLoading) {
+      if (user.role === 'admin') {
+        navigate('/admin');
+      } else if (user.role === 'attendee' && user.deviceId) {
+        navigate(`/device/${user.deviceId}`);
+      }
+    }
+  }, [isAuthenticated, user, authLoading, navigate]);
+
+  const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("🔐 Admin Login Attempt", {
-      email,
-      timestamp: new Date().toISOString(),
-      success: true,
-    });
-    navigate("/admin");
+    setError("");
+    setIsLoading(true);
+    
+    try {
+      await login(email, password);
+      console.log("🔐 Admin Login Success", {
+        email,
+        timestamp: new Date().toISOString(),
+      });
+      // Navigation will be handled by useEffect
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Login failed';
+      setError(errorMessage);
+      console.log("🔐 Admin Login Failed", {
+        email,
+        error: errorMessage,
+        timestamp: new Date().toISOString(),
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleDeviceLogin = (e: React.FormEvent) => {
+  const handleDeviceLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setDeviceError("");
+    setIsLoading(true);
 
     if (!urlDeviceId) {
       setDeviceError("Device ID not found");
+      setIsLoading(false);
       return;
     }
 
-    const device = DUMMY_DEVICE_DIRECTORY.find(
-      (d) => d.deviceId === urlDeviceId.toUpperCase()
-    );
-
-    if (!device) {
-      setDeviceError("Device ID not found");
-      console.log("🔐 Device Login Failed", {
-        type: "device_login_failed",
-        deviceId: urlDeviceId,
-        reason: "invalid_device_id",
-        at: new Date().toISOString(),
-      });
-      return;
-    }
-
-    // Check attendee credentials - accept any email and password
     if (!attendeeEmail || !attendeePassword) {
       setDeviceError("Please enter email and password");
-      console.log("🔐 Device Login Failed", {
-        type: "device_login_failed",
-        deviceId: urlDeviceId,
-        reason: "missing_credentials",
-        at: new Date().toISOString(),
-      });
+      setIsLoading(false);
       return;
     }
 
-    console.log("🔐 Device Login Success", {
-      type: "device_login_success",
-      deviceId: device.deviceId,
-      attendeeEmail: attendeeEmail,
-      at: new Date().toISOString(),
-    });
-    navigate(`/device/${device.deviceId}`);
+    try {
+      await login(attendeeEmail, attendeePassword, urlDeviceId.toUpperCase());
+      console.log("🔐 Device Login Success", {
+        type: "device_login_success",
+        deviceId: urlDeviceId.toUpperCase(),
+        attendeeEmail: attendeeEmail,
+        at: new Date().toISOString(),
+      });
+      // Navigation will be handled by useEffect
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Login failed';
+      setDeviceError(errorMessage);
+      console.log("🔐 Device Login Failed", {
+        type: "device_login_failed",
+        deviceId: urlDeviceId,
+        attendeeEmail: attendeeEmail,
+        error: errorMessage,
+        at: new Date().toISOString(),
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-primary/5 via-background to-secondary/10">
@@ -147,13 +178,24 @@ const Login = () => {
                       <span>{deviceError}</span>
                     </div>
                   )}
-                  <Button type="submit" className="w-full h-12 text-base">
-                    Sign in to Device
+                  <Button 
+                    type="submit" 
+                    className="w-full h-12 text-base"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Signing in...
+                      </>
+                    ) : (
+                      "Sign in to Device"
+                    )}
                   </Button>
                 </form>
                 <div className="bg-muted/50 p-4 rounded-lg text-sm text-muted-foreground text-center">
-                  <p className="font-medium mb-1">Demo Login:</p>
-                  <p>Enter any email and password to proceed</p>
+                  <p className="font-medium mb-1">Note:</p>
+                  <p>Use valid attendee credentials for this device</p>
                 </div>
               </div>
             ) : (
@@ -190,13 +232,30 @@ const Login = () => {
                         className="h-12"
                       />
                     </div>
-                    <Button type="submit" className="w-full h-12 text-base">
-                      Sign in as Admin
+                    <Button 
+                      type="submit" 
+                      className="w-full h-12 text-base"
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Signing in...
+                        </>
+                      ) : (
+                        "Sign in as Admin"
+                      )}
                     </Button>
                   </form>
+                  {error && (
+                    <div className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 p-3 rounded-lg">
+                      <AlertCircle className="h-4 w-4" />
+                      <span>{error}</span>
+                    </div>
+                  )}
                   <div className="bg-muted/50 p-4 rounded-lg text-sm text-muted-foreground text-center">
-                    <p className="font-medium mb-1">Demo Login:</p>
-                    <p>Enter any email and password to proceed</p>
+                    <p className="font-medium mb-1">Note:</p>
+                    <p>Use valid admin credentials to access the system</p>
                   </div>
                 </TabsContent>
 

@@ -221,4 +221,17 @@ device.resume = asyncErrorHandler(async (req, res) => {
   }
 });
 
+
+device.getDetailsById = asyncErrorHandler(async (req, res) => {
+  const { deviceId } = req.params;
+  if (!deviceId) {
+    throw new BadRequestError("Device ID is required");
+  }
+  const deviceDetails = await Device.findOne({ deviceId });
+  if (!deviceDetails) {
+    throw new ForbiddenError("Invalid Device ID");
+  }
+  return successResponse(res, { device: deviceDetails }, "Device details", 200);
+});
+
 export default device;

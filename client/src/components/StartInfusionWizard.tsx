@@ -15,6 +15,12 @@ interface StartInfusionWizardProps {
   onOpenChange: (open: boolean) => void;
   device: Device;
   onUpdateDevice: (deviceId: string, updates: Partial<Device>) => void;
+  onStartInfusion?: (params: {
+    flowRateMlMin: number;
+    plannedTimeMin: number;
+    plannedVolumeMl: number;
+    bolus?: { enabled: boolean; volumeMl: number };
+  }) => Promise<void>;
 }
 
 export const StartInfusionWizard = ({
@@ -22,6 +28,7 @@ export const StartInfusionWizard = ({
   onOpenChange,
   device,
   onUpdateDevice,
+  onStartInfusion,
 }: StartInfusionWizardProps) => {
   const [step, setStep] = useState(1);
   const [patientData, setPatientData] = useState<Partial<Patient>>({});
@@ -62,7 +69,7 @@ export const StartInfusionWizard = ({
     setStep(3);
   };
 
-  const handleStep3Confirm = () => {
+  const handleStep3Confirm = async () => {
     const payload = {
       deviceId: device.deviceId,
       patient: patientData,
@@ -72,18 +79,50 @@ export const StartInfusionWizard = ({
     };
 
     console.log("✅ START Infusion Confirmed - Complete Payload", payload);
-
-    // Update device to Running status
-    onUpdateDevice(device.deviceId, {
-      status: "Running",
-      patient: patientData as Patient,
-      infusion: infusionData as Infusion,
-      progress: {
-        mode: "time",
-        timeRemainingMin: infusionData.plannedTimeMin || 0,
-        volumeRemainingMl: infusionData.plannedVolumeMl || 0,
-      },
+    console.log("🔍 Debug Info", {
+      hasOnStartInfusion: !!onStartInfusion,
+      flowRateMlMin: infusionData.flowRateMlMin,
+      plannedTimeMin: infusionData.plannedTimeMin,
+      plannedVolumeMl: infusionData.plannedVolumeMl,
+      infusionData
     });
+
+    if (onStartInfusion && infusionData.flowRateMlMin && infusionData.plannedTimeMin && infusionData.plannedVolumeMl) {
+      try {
+        // Extract the API parameters from infusion data
+        const apiParams = {
+          flowRateMlMin: infusionData.flowRateMlMin,
+          plannedTimeMin: infusionData.plannedTimeMin,
+          plannedVolumeMl: infusionData.plannedVolumeMl,
+          bolus: infusionData.bolus,
+        };
+        
+        console.log("🔄 Calling Start Infusion API", { apiParams });
+        await onStartInfusion(apiParams);
+        console.log("✅ API call completed successfully");
+      } catch (error) {
+        console.error('❌ Failed to start infusion:', error);
+        return; // Don't close modal if API call failed
+      }
+    } else {
+      console.log("⚠️ Using fallback dummy behavior - reasons:", {
+        hasOnStartInfusion: !!onStartInfusion,
+        hasFlowRate: !!infusionData.flowRateMlMin,
+        hasPlannedTime: !!infusionData.plannedTimeMin,
+        hasPlannedVolume: !!infusionData.plannedVolumeMl
+      });
+      // Fallback to dummy behavior if no API integration
+      onUpdateDevice(device.deviceId, {
+        status: "Running",
+        patient: patientData as Patient,
+        infusion: infusionData as Infusion,
+        progress: {
+          mode: "time",
+          timeRemainingMin: infusionData.plannedTimeMin || 0,
+          volumeRemainingMl: infusionData.plannedVolumeMl || 0,
+        },
+      });
+    }
 
     onOpenChange(false);
   };

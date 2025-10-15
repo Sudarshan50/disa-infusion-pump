@@ -9,34 +9,102 @@ import { StartInfusionWizard } from "@/components/StartInfusionWizard";
 import { ScheduleInfusionModal } from "@/components/ScheduleInfusionModal";
 import { Progress } from "@/components/ui/progress";
 import { DUMMY_DEVICE_STATE, DeviceState, Device } from "@/data/dummyData";
-import { MapPin, Activity, Clock, Droplets } from "lucide-react";
+import { MapPin, Activity, Clock, Droplets, Loader2 } from "lucide-react";
 import { Footer } from "@/components/Footer";
+import { deviceApi, DeviceDetails } from "@/lib/deviceApi";
+import { useAuth } from "@/hooks/useAuth";
 
 const DeviceDashboard = () => {
   const { deviceId } = useParams<{ deviceId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [deviceDetails, setDeviceDetails] = useState<DeviceDetails | null>(null);
   const [deviceState, setDeviceState] = useState<DeviceState | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [error, setError] = useState<string>("");
   const [wizardOpen, setWizardOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
 
   useEffect(() => {
-    if (!deviceId) {
-      navigate("/");
-      return;
-    }
+    const fetchDeviceData = async () => {
+      if (!deviceId) {
+        navigate("/");
+        return;
+      }
 
-    const device = DUMMY_DEVICE_STATE[deviceId];
-    if (!device) {
-      console.log("❌ Device Not Found", {
-        type: "device_not_found",
-        deviceId,
-        at: new Date().toISOString(),
-      });
-      return;
-    }
+      // Check if user has access to this device
+      if (user?.role === 'attendee' && user.deviceId !== deviceId) {
+        setError("Access denied: You don't have permission to access this device");
+        setIsLoading(false);
+        return;
+      }
 
-    setDeviceState(device);
-  }, [deviceId, navigate]);
+      try {
+        setIsLoading(true);
+        
+        // Fetch real device details for the top ribbon
+        const realDeviceDetails = await deviceApi.getDeviceDetails(deviceId);
+        setDeviceDetails(realDeviceDetails);
+
+        // Get dummy data for the rest of the functionality
+        const dummyDevice = DUMMY_DEVICE_STATE[deviceId];
+        if (!dummyDevice) {
+          console.log("❌ Device Not Found in Dummy Data", {
+            type: "device_not_found",
+            deviceId,
+            at: new Date().toISOString(),
+          });
+          // Use real device data to create basic state
+          setDeviceState({
+            deviceId: realDeviceDetails.deviceId,
+            location: realDeviceDetails.location,
+            status: realDeviceDetails.status === 'running' ? 'Running' : 
+                   realDeviceDetails.status === 'healthy' ? 'Healthy' :
+                   realDeviceDetails.status === 'issue' ? 'Issue' :
+                   realDeviceDetails.status === 'degraded' ? 'Degraded' : 'Healthy',
+            notifications: [],
+            logs: [],
+            patient: null,
+            infusion: null,
+            progress: null
+          });
+        } else {
+          // Update dummy data with real device info
+          setDeviceState({
+            ...dummyDevice,
+            deviceId: realDeviceDetails.deviceId,
+            location: realDeviceDetails.location,
+            status: realDeviceDetails.status === 'running' ? 'Running' : 
+                   realDeviceDetails.status === 'healthy' ? 'Healthy' :
+                   realDeviceDetails.status === 'issue' ? 'Issue' :
+                   realDeviceDetails.status === 'degraded' ? 'Degraded' : 'Healthy',
+            notifications: [] // Use real notifications from API
+          });
+        }
+
+        console.log("✅ Device Data Loaded", {
+          deviceId,
+          status: realDeviceDetails.status,
+          location: realDeviceDetails.location,
+          timestamp: new Date().toISOString(),
+        });
+
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load device details';
+        setError(errorMessage);
+        console.log("❌ Device Data Load Failed", {
+          deviceId,
+          error: errorMessage,
+          timestamp: new Date().toISOString(),
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDeviceData();
+  }, [deviceId, navigate, user]);
 
   const handleDeleteNotification = (id: string) => {
     if (!deviceState) return;
@@ -46,12 +114,149 @@ const DeviceDashboard = () => {
     });
   };
 
-  const handleUpdateDevice = (deviceId: string, updates: Partial<Device>) => {
-    if (!deviceState) return;
+  const handleUpdateDevice = async (deviceId: string, updates: Partial<Device>) => {
+    if (!deviceState || !deviceDetails) return;
+    
+    // Update local state immediately for UI responsiveness
     setDeviceState({
       ...deviceState,
       ...updates,
     });
+
+    // Refresh device details from API to get real status
+    try {
+      const updatedDetails = await deviceApi.getDeviceDetails(deviceId);
+      setDeviceDetails(updatedDetails);
+      
+      // Update device state with real status
+      setDeviceState(prev => prev ? {
+        ...prev,
+        status: updatedDetails.status === 'running' ? 'Running' : 
+               updatedDetails.status === 'healthy' ? 'Healthy' :
+               updatedDetails.status === 'issue' ? 'Issue' :
+               updatedDetails.status === 'degraded' ? 'Degraded' : 'Healthy',
+      } : null);
+    } catch (err) {
+      console.error('Failed to refresh device details:', err);
+    }
+  };
+
+  const handleDeviceAction = async (
+    action: 'stop' | 'pause' | 'resume', 
+    params?: { reason?: string; emergency?: boolean }
+  ) => {
+    if (!deviceId || !deviceDetails) return;
+
+    try {
+      setActionLoading(action);
+      console.log(`🔄 Device Action: ${action}`, {
+        deviceId,
+        action,
+        params,
+        timestamp: new Date().toISOString(),
+      });
+
+      switch (action) {
+        case 'stop':
+          await deviceApi.stopInfusion(deviceId, params);
+          break;
+        case 'pause':
+          await deviceApi.pauseInfusion(deviceId, params);
+          break;
+        case 'resume':
+          await deviceApi.resumeInfusion(deviceId);
+          break;
+      }
+      
+      // Refresh device details after action
+      const updatedDetails = await deviceApi.getDeviceDetails(deviceId);
+      setDeviceDetails(updatedDetails);
+      
+      // Update device state with new status
+      setDeviceState(prev => prev ? {
+        ...prev,
+        status: updatedDetails.status === 'running' ? 'Running' : 
+               updatedDetails.status === 'healthy' ? 'Healthy' :
+               updatedDetails.status === 'issue' ? 'Issue' :
+               updatedDetails.status === 'degraded' ? 'Degraded' : 'Healthy',
+      } : null);
+
+      console.log(`✅ Device Action Success: ${action}`, {
+        deviceId,
+        newStatus: updatedDetails.status,
+        timestamp: new Date().toISOString(),
+      });
+
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : `Failed to ${action} infusion`;
+      console.error(`❌ Device Action Failed: ${action}`, {
+        deviceId,
+        error: errorMessage,
+        timestamp: new Date().toISOString(),
+      });
+      // TODO: Show error toast/notification to user
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleStartInfusion = async (params: {
+    flowRateMlMin: number;
+    plannedTimeMin: number;
+    plannedVolumeMl: number;
+    bolus?: { enabled: boolean; volumeMl: number };
+  }) => {
+    if (!deviceId || !deviceDetails) return;
+    
+    try {
+      console.log("🚀 Starting Infusion", {
+        deviceId,
+        params,
+        timestamp: new Date().toISOString(),
+      });
+
+      await deviceApi.startInfusion(deviceId, params);
+      
+      // Refresh device details after starting
+      const updatedDetails = await deviceApi.getDeviceDetails(deviceId);
+      setDeviceDetails(updatedDetails);
+      
+      // Update device state with new status and infusion details
+      setDeviceState(prev => prev ? {
+        ...prev,
+        status: updatedDetails.status === 'running' ? 'Running' : 
+               updatedDetails.status === 'healthy' ? 'Healthy' :
+               updatedDetails.status === 'issue' ? 'Issue' :
+               updatedDetails.status === 'degraded' ? 'Degraded' : 'Healthy',
+        infusion: {
+          flowRateMlMin: params.flowRateMlMin,
+          plannedTimeMin: params.plannedTimeMin,
+          plannedVolumeMl: params.plannedVolumeMl,
+          bolus: params.bolus || { enabled: false, volumeMl: 0 }
+        },
+        // Add some mock progress for running infusions
+        progress: updatedDetails.status === 'running' ? {
+          mode: "time" as const,
+          timeRemainingMin: params.plannedTimeMin,
+          volumeRemainingMl: params.plannedVolumeMl
+        } : null
+      } : null);
+
+      console.log("✅ Infusion Started Successfully", {
+        deviceId,
+        newStatus: updatedDetails.status,
+        timestamp: new Date().toISOString(),
+      });
+
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to start infusion';
+      console.error("❌ Infusion Start Failed", {
+        deviceId,
+        error: errorMessage,
+        timestamp: new Date().toISOString(),
+      });
+      // TODO: Show error toast/notification to user
+    }
   };
 
   const handleToggleProgress = () => {
@@ -73,19 +278,32 @@ const DeviceDashboard = () => {
     });
   };
 
-  if (!deviceState) {
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+          <p className="text-muted-foreground">Loading device details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !deviceDetails || !deviceState) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Card className="glass max-w-md">
           <CardContent className="pt-6 text-center space-y-4">
             <Activity className="h-16 w-16 mx-auto text-muted-foreground" />
             <div>
-              <h2 className="text-2xl font-bold">Device Not Found</h2>
+              <h2 className="text-2xl font-bold">Device Access Error</h2>
               <p className="text-muted-foreground mt-2">
-                The device {deviceId} could not be found.
+                {error || `The device ${deviceId} could not be found.`}
               </p>
             </div>
-            <Button onClick={() => navigate("/")}>Back to Login</Button>
+            <Button onClick={() => navigate(user?.role === 'admin' ? '/admin' : '/')}>
+              {user?.role === 'admin' ? 'Back to Admin' : 'Back to Login'}
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -119,25 +337,29 @@ const DeviceDashboard = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Device Info Card */}
+      {/* Device Info Card - Using Real API Data */}
       <Card className="glass">
         <CardHeader>
           <div className="flex items-start justify-between">
             <div className="space-y-2">
               <CardTitle className="text-2xl flex items-center gap-3">
                 <Activity className="h-6 w-6 text-primary" />
-                {deviceState.deviceId}
+                {deviceDetails.deviceId}
               </CardTitle>
               <div className="flex items-center gap-2 text-muted-foreground">
                 <MapPin className="h-4 w-4" />
-                <span>{deviceState.location}</span>
+                <span>{deviceDetails.location}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Clock className="h-4 w-4" />
+                <span>Last updated: {new Date(deviceDetails.updatedAt).toLocaleString()}</span>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <NotificationsPopover
                 notifications={deviceState.notifications}
                 onDelete={handleDeleteNotification}
-                deviceId={deviceState.deviceId}
+                deviceId={deviceDetails.deviceId}
               />
               <StatusChip status={deviceState.status} />
             </div>
@@ -145,8 +367,8 @@ const DeviceDashboard = () => {
         </CardHeader>
       </Card>
 
-      {/* Running State */}
-      {deviceState.status === "Running" &&
+      {/* Running/Paused State */}
+      {(deviceState.status === "Running" || deviceDetails?.status === "paused") &&
         deviceState.patient &&
         deviceState.infusion && (
           <div className="space-y-6">
@@ -154,14 +376,25 @@ const DeviceDashboard = () => {
             <Card className="glass">
               <CardHeader>
                 <CardTitle>Controls</CardTitle>
+                {deviceDetails?.status === "paused" && (
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg mt-2">
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                      ⏸️ Infusion is currently paused
+                    </p>
+                  </div>
+                )}
               </CardHeader>
               <CardContent>
                 <RunningDeviceActions
                   device={deviceAsDevice}
                   onUpdateDevice={handleUpdateDevice}
+                  onDeviceAction={handleDeviceAction}
+                  actionLoading={actionLoading}
+                  isPaused={deviceDetails?.status === 'paused'}
                 />
               </CardContent>
             </Card>
+            
 
             {/* Progress - Second */}
             {deviceState.progress && (
@@ -295,8 +528,9 @@ const DeviceDashboard = () => {
           </div>
         )}
 
-      {/* Healthy State */}
-      {deviceState.status === "Healthy" && (
+      {/* Healthy/Stopped State - Can Start Infusion */}
+      {(deviceState.status === "Healthy" || deviceDetails?.status === "stopped") && 
+       deviceDetails?.status !== "paused" && (
         <Card className="glass">
           <CardHeader>
             <CardTitle>Actions</CardTitle>
@@ -356,6 +590,7 @@ const DeviceDashboard = () => {
         onOpenChange={setWizardOpen}
         device={deviceAsDevice}
         onUpdateDevice={handleUpdateDevice}
+        onStartInfusion={handleStartInfusion}
       />
 
       <ScheduleInfusionModal
