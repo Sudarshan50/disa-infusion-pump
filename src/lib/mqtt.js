@@ -76,7 +76,7 @@ class MQTTService {
   subscribeToDeviceTopics() {
     if (!this.isConnected) return;
 
-    const topics = ["devices/+/progress", "devices/+/error"];
+    const topics = ["devices/+/progress", "devices/+/error", "devices/+/status","devices/+/infusion"];
 
     topics.forEach((topic) => {
       this.client.subscribe(topic, (err) => {
@@ -95,7 +95,6 @@ class MQTTService {
       const topicParts = topic.split("/");
       const deviceId = topicParts[1];
       const messageType = topicParts[2];
-
       switch (messageType) {
         case "progress":
           await this.handleDeviceProgress(deviceId, data);

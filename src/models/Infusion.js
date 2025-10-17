@@ -28,14 +28,6 @@ const InfusionDetailSchema = new Schema(
 
 const InfusionSchema = new Schema(
   {
-    infusionId: {
-      type: String,
-      required: true,
-      unique: true,
-      default: function () {
-        return new mongoose.Types.ObjectId().toHexString();
-      },
-    },
     device: { type: Schema.Types.ObjectId, ref: "Device", required: true },
     patientDetailSkipped: { type: Boolean, default: false },
     attendee: { type: Schema.Types.ObjectId, ref: "User" },

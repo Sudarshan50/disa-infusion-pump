@@ -234,11 +234,11 @@ const DeviceDashboard = () => {
           plannedVolumeMl: params.plannedVolumeMl,
           bolus: params.bolus || { enabled: false, volumeMl: 0 }
         },
-        // Add some mock progress for running infusions
+        // Add some mock progress for running infusions with simulated time passage
         progress: updatedDetails.status === 'running' ? {
           mode: "time" as const,
-          timeRemainingMin: params.plannedTimeMin,
-          volumeRemainingMl: params.plannedVolumeMl
+          timeRemainingMin: Math.max(0, params.plannedTimeMin - 0.5), // Simulate 0.5 min elapsed
+          volumeRemainingMl: Math.max(0, params.plannedVolumeMl - (params.flowRateMlMin * 0.5)) // Simulate volume delivered
         } : null
       } : null);
 
@@ -320,20 +320,41 @@ const DeviceDashboard = () => {
     progress: deviceState.progress,
   };
 
-  const progressPercent =
-    deviceState.progress?.mode === "time"
-      ? deviceState.infusion
-        ? ((deviceState.infusion.plannedTimeMin -
-            deviceState.progress.timeRemainingMin) /
-            deviceState.infusion.plannedTimeMin) *
-          100
-        : 0
-      : deviceState.infusion
-        ? ((deviceState.infusion.plannedVolumeMl -
-            deviceState.progress.volumeRemainingMl) /
-            deviceState.infusion.plannedVolumeMl) *
-          100
+  const progressPercent = (() => {
+    if (!deviceState.progress || !deviceState.infusion) return 0;
+    
+    let percent = 0;
+    if (deviceState.progress.mode === "time") {
+      // Time-based progress: (elapsed time / total time) * 100
+      const elapsedTime = deviceState.infusion.plannedTimeMin - deviceState.progress.timeRemainingMin;
+      percent = deviceState.infusion.plannedTimeMin > 0 
+        ? (elapsedTime / deviceState.infusion.plannedTimeMin) * 100 
         : 0;
+      
+      console.log("🔢 Time Progress Calculation", {
+        plannedTime: deviceState.infusion.plannedTimeMin,
+        timeRemaining: deviceState.progress.timeRemainingMin,
+        elapsedTime,
+        percent: percent.toFixed(1)
+      });
+    } else {
+      // Volume-based progress: (delivered volume / total volume) * 100  
+      const deliveredVolume = deviceState.infusion.plannedVolumeMl - deviceState.progress.volumeRemainingMl;
+      percent = deviceState.infusion.plannedVolumeMl > 0 
+        ? (deliveredVolume / deviceState.infusion.plannedVolumeMl) * 100 
+        : 0;
+      
+      console.log("🔢 Volume Progress Calculation", {
+        plannedVolume: deviceState.infusion.plannedVolumeMl,
+        volumeRemaining: deviceState.progress.volumeRemainingMl,
+        deliveredVolume,
+        percent: percent.toFixed(1)
+      });
+    }
+    
+    // Ensure percentage is between 0 and 100
+    return Math.max(0, Math.min(100, percent));
+  })();
 
   return (
     <div className="space-y-6 animate-fade-in">
