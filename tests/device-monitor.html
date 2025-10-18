@@ -217,13 +217,13 @@
       });
 
       // Device status updates
-      socket.on("device:status:update", (data) => {
+      socket.on("device:status", (data) => {
         console.log("📊 Status Update:", data);
         updateDeviceStatus(data);
       });
 
       // Device progress updates
-      socket.on("device:progress:update", (data) => {
+      socket.on("device:progress", (data) => {
         console.log("📈 Progress Update:", data);
         updateDeviceProgress(data);
       });
@@ -232,6 +232,12 @@
       socket.on("device:error", (data) => {
         console.log("🚨 Error Notification:", data);
         updateDeviceError(data);
+      });
+
+      // Device infusion confirmation
+      socket.on("device:infusion:confirmed", (data) => {
+        console.log("💉 Infusion Confirmed:", data);
+        updateInfusionConfirmation(data);
       });
 
       // Error handling
@@ -250,14 +256,10 @@
         devices.add(deviceId);
         createDeviceCard(deviceId);
 
-        // Subscribe to status, progress, and errors
-        socket.emit("subscribe:device:status", deviceId);
-        socket.emit("subscribe:device:progress", deviceId);
-        socket.emit("subscribe:device:errors", deviceId);
+        // Subscribe to device using new event structure
+        socket.emit("subscribe:device", { deviceId });
 
-        console.log(
-          `📡 Subscribed to ${deviceId} (status, progress, and errors)`
-        );
+        console.log(`📡 Subscribed to ${deviceId}`);
       }
 
       function unsubscribeFromDevice() {
@@ -270,10 +272,8 @@
         devices.delete(deviceId);
         removeDeviceCard(deviceId);
 
-        // Unsubscribe from status, progress, and errors
-        socket.emit("unsubscribe:device:status", deviceId);
-        socket.emit("unsubscribe:device:progress", deviceId);
-        socket.emit("unsubscribe:device:errors", deviceId);
+        // Unsubscribe from device using new event structure
+        socket.emit("unsubscribe:device", { deviceId });
 
         console.log(`📡 Unsubscribed from ${deviceId}`);
       }
@@ -331,7 +331,8 @@
       }
 
       function updateDeviceStatus(data) {
-        const { deviceId, status, lastPing, timestamp } = data;
+        const { deviceId, status } = data;
+        const statusData = data.status || data; // Handle both nested and flat structure
 
         // Create card if it doesn't exist
         if (!document.getElementById(`device-${deviceId}`)) {
@@ -341,29 +342,26 @@
         // Update status badge
         const statusElement = document.getElementById(`status-${deviceId}`);
         if (statusElement) {
-          statusElement.textContent = status.toUpperCase();
-          statusElement.className = `status-badge status-${status}`;
+          const statusValue = statusData.status || status || 'unknown';
+          statusElement.textContent = statusValue.toUpperCase();
+          statusElement.className = `status-badge status-${statusValue}`;
         }
 
         // Update last ping
         const lastPingElement = document.getElementById(`lastping-${deviceId}`);
         if (lastPingElement) {
-          lastPingElement.textContent = lastPing || "Never";
+          lastPingElement.textContent = statusData.lastPing || "Never";
         }
 
         // Update timestamp
-        const timestampElement = document.getElementById(
-          `timestamp-${deviceId}`
-        );
+        const timestampElement = document.getElementById(`timestamp-${deviceId}`);
         if (timestampElement) {
-          timestampElement.textContent = new Date(
-            timestamp
-          ).toLocaleTimeString();
+          timestampElement.textContent = new Date(statusData.timestamp || Date.now()).toLocaleTimeString();
         }
       }
 
       function updateDeviceProgress(data) {
-        const { deviceId, progress, timestamp } = data;
+        const { deviceId, progress } = data;
 
         // Create card if it doesn't exist
         if (!document.getElementById(`device-${deviceId}`)) {
@@ -384,6 +382,12 @@
           if (volumeElement) {
             volumeElement.textContent = `${volumeRemainingMl} ml`;
           }
+
+          // Update timestamp
+          const timestampElement = document.getElementById(`timestamp-${deviceId}`);
+          if (timestampElement) {
+            timestampElement.textContent = new Date(progress.timestamp || Date.now()).toLocaleTimeString();
+          }
         } else {
           // No progress data
           const timeElement = document.getElementById(`time-${deviceId}`);
@@ -391,29 +395,17 @@
           if (timeElement) timeElement.textContent = "--";
           if (volumeElement) volumeElement.textContent = "--";
         }
-
-        // Update timestamp
-        const timestampElement = document.getElementById(
-          `timestamp-${deviceId}`
-        );
-        if (timestampElement) {
-          timestampElement.textContent = new Date(
-            timestamp
-          ).toLocaleTimeString();
-        }
       }
 
       function updateDeviceError(data) {
-        const { deviceId, error, timestamp } = data;
+        const { deviceId, error } = data;
 
         // Create card if it doesn't exist
         if (!document.getElementById(`device-${deviceId}`)) {
           createDeviceCard(deviceId);
         }
 
-        const errorSection = document.getElementById(
-          `error-section-${deviceId}`
-        );
+        const errorSection = document.getElementById(`error-section-${deviceId}`);
         if (!errorSection) return;
 
         if (error && error.type && error.message) {
@@ -426,7 +418,7 @@
                     <div class="error-details">
                         <div><strong>Type:</strong> <span class="error-code">${error.type}</span></div>
                         <div><strong>Message:</strong> ${error.message}</div>
-                        <div><strong>Time:</strong> ${new Date(timestamp).toLocaleString()}</div>
+                        <div><strong>Time:</strong> ${new Date(error.timestamp).toLocaleString()}</div>
                     </div>
                 `;
 
@@ -449,6 +441,20 @@
                         No errors reported
                     </div>
                 `;
+        }
+      }
+
+      function updateInfusionConfirmation(data) {
+        const { deviceId, confirmation } = data;
+        console.log(`💉 Device ${deviceId} confirmed infusion:`, confirmation);
+        
+        // You could add visual feedback here
+        const card = document.getElementById(`device-${deviceId}`);
+        if (card) {
+          card.style.border = "2px solid #28a745";
+          setTimeout(() => {
+            card.style.border = "";
+          }, 3000);
         }
       }
 

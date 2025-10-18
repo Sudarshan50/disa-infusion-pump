@@ -21,6 +21,7 @@ interface StartInfusionWizardProps {
     plannedVolumeMl: number;
     bolus?: { enabled: boolean; volumeMl: number };
   }) => Promise<void>;
+  onRefetchDeviceDetails?: () => void; // New callback to refetch device details
 }
 
 export const StartInfusionWizard = ({
@@ -29,6 +30,7 @@ export const StartInfusionWizard = ({
   device,
   onUpdateDevice,
   onStartInfusion,
+  onRefetchDeviceDetails,
 }: StartInfusionWizardProps) => {
   const [step, setStep] = useState(1);
   const [patientData, setPatientData] = useState<Partial<Patient>>({});
@@ -124,7 +126,8 @@ export const StartInfusionWizard = ({
       });
     }
 
-    onOpenChange(false);
+    // Don't close wizard automatically - let WizardStep3 handle closing after device confirmation
+    // onOpenChange(false);
   };
 
   const getStepTitle = () => {
@@ -197,6 +200,8 @@ export const StartInfusionWizard = ({
             deviceId={device.deviceId}
             onConfirm={handleStep3Confirm}
             onBack={() => setStep(2)}
+            onWizardClose={() => onOpenChange(false)}
+            onRefetchDeviceDetails={onRefetchDeviceDetails}
           />
         )}
       </DialogContent>

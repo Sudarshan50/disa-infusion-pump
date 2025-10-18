@@ -17,7 +17,7 @@ export const DUMMY_DEVICE_DIRECTORY = [
   { deviceId: "PUMP_004", location: "ICU Bay 1" },
 ];
 
-export type DeviceStatus = "Healthy" | "Running" | "Issue" | "Degraded";
+export type DeviceStatus = "Healthy" | "Running" | "Issue" | "Degraded" | "Paused";
 
 export interface Patient {
   name: string;

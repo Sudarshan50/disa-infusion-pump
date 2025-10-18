@@ -13,6 +13,8 @@ export const StatusChip = ({ status, showPulse = false }: StatusChipProps) => {
         return "status-healthy";
       case "Running":
         return "status-running";
+      case "Paused":
+        return "status-paused";
       case "Issue":
         return "status-issue";
       case "Degraded":

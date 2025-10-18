@@ -6,6 +6,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Patient, Infusion } from "@/data/dummyData";
 import { User, Syringe, AlertCircle } from "lucide-react";
+import { WaitingForDeviceModal } from "@/components/WaitingForDeviceModal";
+import { InfusionDetails } from "@/lib/deviceApi";
 
 interface WizardStep3Props {
   patientData: Partial<Patient>;
@@ -14,6 +16,9 @@ interface WizardStep3Props {
   deviceId: string;
   onConfirm: () => void;
   onBack: () => void;
+  onDeviceConfirmed?: (infusionData: { deviceId: string; infusionId: string; status: string; timestamp: string }) => void;
+  onWizardClose?: () => void; // Add prop to close the wizard
+  onRefetchDeviceDetails?: () => void; // New callback to refetch device details
 }
 
 export const WizardStep3 = ({
@@ -23,16 +28,62 @@ export const WizardStep3 = ({
   deviceId,
   onConfirm,
   onBack,
+  onDeviceConfirmed,
+  onWizardClose,
+  onRefetchDeviceDetails,
 }: WizardStep3Props) => {
   const [confirmText, setConfirmText] = useState("");
+  const [showWaitingModal, setShowWaitingModal] = useState(false);
 
   const isConfirmEnabled = confirmText.toLowerCase() === "start";
+
+  const handleConfirm = () => {
+    // Simultaneously: show modal AND call API
+    console.log('🚀 User confirmed - showing modal and calling API simultaneously');
+    setShowWaitingModal(true);
+    onConfirm(); // Call API immediately
+  };
+
+  const handleDeviceConfirmation = (infusionData: { deviceId: string; infusionId: string; status: string; timestamp: string; infusionDetails?: InfusionDetails }) => {
+    setShowWaitingModal(false);
+    
+    // Close the wizard when device confirmation is received
+    if (onWizardClose) {
+      onWizardClose();
+    }
+    
+    if (onDeviceConfirmed) {
+      onDeviceConfirmed(infusionData);
+    }
+  };
+
+  const handleStartMonitoring = (infusionData: { deviceId: string; infusionId: string; status: string; timestamp: string; infusionDetails?: InfusionDetails }) => {
+    console.log('🎯 Starting monitoring mode with infusion data:', infusionData);
+    setShowWaitingModal(false);
+    
+    // Close the wizard when monitoring starts
+    if (onWizardClose) {
+      onWizardClose();
+    }
+    
+    // Navigate to monitoring/device dashboard
+    if (onDeviceConfirmed) {
+      onDeviceConfirmed(infusionData);
+    }
+    
+    // You can add navigation logic here to go directly to monitoring view
+    // For example: navigate(`/device/${infusionData.deviceId}/monitor`)
+  };
+
+  const handleCloseWaitingModal = () => {
+    setShowWaitingModal(false);
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
       if (isConfirmEnabled) {
-        onConfirm();
+        handleConfirm();
       }
     }
   };
@@ -167,13 +218,21 @@ export const WizardStep3 = ({
           Back
         </Button>
         <Button
-          onClick={onConfirm}
+          onClick={handleConfirm}
           disabled={!isConfirmEnabled}
           className="flex-1 h-10 sm:h-12 text-sm sm:text-base"
         >
           Confirm & Start Infusion
         </Button>
       </div>
+
+      <WaitingForDeviceModal
+        isOpen={showWaitingModal}
+        onClose={handleCloseWaitingModal}
+        deviceId={deviceId}
+        onDeviceConfirmed={handleDeviceConfirmation}
+        onRefetchDeviceDetails={onRefetchDeviceDetails}
+      />
     </div>
   );
 };

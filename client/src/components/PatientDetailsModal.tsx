@@ -26,27 +26,32 @@ export const PatientDetailsModal = ({
     device.progress?.mode || "time"
   );
 
-  if (!device.patient || !device.infusion || !device.progress) {
+  // Only require infusion details - patient and progress are optional
+  if (!device.infusion) {
     return null;
   }
 
   const getProgressValue = () => {
+    if (!device.progress) return 0;
+    
     if (progressMode === "time") {
-      const remaining = device.progress!.timeRemainingMin;
+      const remaining = device.progress.timeRemainingMin;
       const total = device.infusion!.plannedTimeMin;
-      return ((total - remaining) / total) * 100;
+      return total > 0 ? ((total - remaining) / total) * 100 : 0;
     } else {
-      const remaining = device.progress!.volumeRemainingMl;
+      const remaining = device.progress.volumeRemainingMl;
       const total = device.infusion!.plannedVolumeMl;
-      return ((total - remaining) / total) * 100;
+      return total > 0 ? ((total - remaining) / total) * 100 : 0;
     }
   };
 
   const getRemainingValue = () => {
+    if (!device.progress) return "N/A";
+    
     if (progressMode === "time") {
-      return `${device.progress!.timeRemainingMin} min`;
+      return `${device.progress.timeRemainingMin} min`;
     } else {
-      return `${device.progress!.volumeRemainingMl} ml`;
+      return `${device.progress.volumeRemainingMl} ml`;
     }
   };
 
@@ -78,32 +83,45 @@ export const PatientDetailsModal = ({
                 <User className="h-5 w-5" />
                 <h3>Patient Information</h3>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Name</p>
-                  <p className="font-semibold">{device.patient.name}</p>
+              {device.patient ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Name</p>
+                    <p className="font-semibold">{device.patient.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Age</p>
+                    <p className="font-semibold">{device.patient.age} years</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Weight</p>
+                    <p className="font-semibold">{device.patient.weight} kg</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Bed No.</p>
+                    <p className="font-semibold">{device.patient.bedNo}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Drug Infused</p>
+                    <p className="font-semibold">{device.patient.drugInfused}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Allergies</p>
+                    <p className="font-semibold">{device.patient.allergies}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Age</p>
-                  <p className="font-semibold">{device.patient.age} years</p>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                    <p className="text-lg font-medium text-muted-foreground mb-2">
+                      Patient Details Skipped
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      This infusion was started without patient information
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Weight</p>
-                  <p className="font-semibold">{device.patient.weight} kg</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Bed No.</p>
-                  <p className="font-semibold">{device.patient.bedNo}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Drug Infused</p>
-                  <p className="font-semibold">{device.patient.drugInfused}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Allergies</p>
-                  <p className="font-semibold">{device.patient.allergies}</p>
-                </div>
-              </div>
+              )}
             </div>
           </Card>
 
@@ -148,43 +166,64 @@ export const PatientDetailsModal = ({
           </Card>
 
           {/* Progress */}
-          <Card className="glass-dark">
-            <div className="p-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-primary font-semibold">
-                  {progressMode === "time" ? (
-                    <Clock className="h-5 w-5" />
-                  ) : (
-                    <Droplet className="h-5 w-5" />
-                  )}
-                  <h3>
-                    {progressMode === "time"
-                      ? "Time Remaining"
-                      : "Volume Remaining"}
-                  </h3>
+          {device.progress ? (
+            <Card className="glass-dark">
+              <div className="p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-primary font-semibold">
+                    {progressMode === "time" ? (
+                      <Clock className="h-5 w-5" />
+                    ) : (
+                      <Droplet className="h-5 w-5" />
+                    )}
+                    <h3>
+                      {progressMode === "time"
+                        ? "Time Remaining"
+                        : "Volume Remaining"}
+                    </h3>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={handleToggleMode}>
+                    Switch to {progressMode === "time" ? "Volume" : "Time"}
+                  </Button>
                 </div>
-                <Button variant="outline" size="sm" onClick={handleToggleMode}>
-                  Switch to {progressMode === "time" ? "Volume" : "Time"}
-                </Button>
-              </div>
 
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Progress</span>
-                  <span className="font-semibold">
-                    {Math.round(getProgressValue())}%
-                  </span>
-                </div>
-                <Progress value={getProgressValue()} className="h-3" />
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Remaining</span>
-                  <span className="font-semibold text-primary">
-                    {getRemainingValue()}
-                  </span>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Progress</span>
+                    <span className="font-semibold">
+                      {Math.round(getProgressValue())}%
+                    </span>
+                  </div>
+                  <Progress value={getProgressValue()} className="h-3" />
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Remaining</span>
+                    <span className="font-semibold text-primary">
+                      {getRemainingValue()}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          </Card>
+            </Card>
+          ) : (
+            <Card className="glass-dark">
+              <div className="p-4 space-y-4">
+                <div className="flex items-center gap-2 text-primary font-semibold">
+                  <Clock className="h-5 w-5" />
+                  <h3>Progress</h3>
+                </div>
+                <div className="text-center py-4">
+                  <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                    <p className="text-lg font-medium text-muted-foreground mb-2">
+                      Progress Data Unavailable
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Real-time progress tracking is not available for this infusion
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
         </div>
       </DialogContent>
     </Dialog>

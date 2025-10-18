@@ -1,5 +1,4 @@
 import mqtt from "mqtt";
-import { redisClient } from "./redis.js";
 
 class MQTTService {
   constructor() {
@@ -95,6 +94,9 @@ class MQTTService {
       const topicParts = topic.split("/");
       const deviceId = topicParts[1];
       const messageType = topicParts[2];
+      
+      console.log(`📥 MQTT Message received - Topic: ${topic}, Device: ${deviceId}, Type: ${messageType}`);
+      
       switch (messageType) {
         case "progress":
           await this.handleDeviceProgress(deviceId, data);
@@ -102,6 +104,11 @@ class MQTTService {
         case "error":
           await this.handleDeviceError(deviceId, data);
           break;
+        case "infusion":
+          await this.handleInfusionConfirmation(deviceId, data);
+          break;
+        default:
+          console.log(`⚠️ Unhandled message type: ${messageType} for device ${deviceId}`);
       }
     } catch (error) {
       console.error("Error processing MQTT message:", error);
@@ -109,41 +116,66 @@ class MQTTService {
   }
 
   async handleDeviceProgress(deviceId, data) {
-    await redisClient.set(
-      `device:${deviceId}:progress`,
-      JSON.stringify({
-        timeRemainingMin: data.timeRemainingMin || 0,
-        volumeRemainingMl: data.volumeRemainingMl || 0,
-        timestamp: new Date().toISOString(),
-        ...data,
-      }),
-      { EX: 5 }
-    );
-    console.log(`Progress update from ${deviceId}:`, {
+    const progressData = {
+      deviceId,
+      timeRemainingMin: data.timeRemainingMin || 0,
+      volumeRemainingMl: data.volumeRemainingMl || 0,
+      timestamp: new Date().toISOString(),
+      infusionId: data.infusionId || null,
+      progressPercent: data.progressPercent || null,
+      ...data,
+    };
+
+    console.log(`📈 Progress update from ${deviceId}:`, {
       timeRemainingMin: data.timeRemainingMin,
       volumeRemainingMl: data.volumeRemainingMl,
+      infusionId: data.infusionId,
     });
 
-    // Trigger real-time Socket.IO update
+    // Stream directly to Socket.IO clients
     if (this.socketService) {
-      await this.socketService.notifyProgressUpdate(deviceId);
+      this.socketService.streamProgressData(deviceId, progressData);
     }
   }
 
   async handleDeviceError(deviceId, data) {
-    console.error(`🚨 Device ${deviceId} error:`, data);
-    await redisClient.set(
-      `device:${deviceId}:error`,
-      JSON.stringify({
-        ...data,
-        timestamp: new Date().toISOString(),
-      }),
-      { EX: 300 }
-    );
+    const errorData = {
+      deviceId,
+      ...data,
+      timestamp: new Date().toISOString(),
+    };
 
+    console.error(`🚨 Device ${deviceId} error:`, errorData);
+
+    // Stream directly to Socket.IO clients
     if (this.socketService) {
-      await this.socketService.notifyDeviceError(deviceId, data);
+      this.socketService.streamErrorData(deviceId, errorData);
     }
+  }
+
+  async handleInfusionConfirmation(deviceId, data) {
+    console.log(`💉 Processing infusion confirmation for device ${deviceId}:`, data);
+    
+    // Validate the confirmation has required fields
+    if (!data.infusionId) {
+      console.error('❌ Invalid confirmation - missing infusionId:', data);
+      return;
+    }
+
+    if (!data.confirmed) {
+      console.warn('⚠️ Device did not confirm infusion:', data);
+      return;
+    }
+
+    console.log(`✅ Valid infusion confirmation - streaming to Socket.IO:`, {
+      deviceId,
+      infusionId: data.infusionId,
+      confirmed: data.confirmed,
+      confirmedAt: data.confirmedAt
+    });
+
+    // Stream confirmation to Socket.IO clients (now async)
+    await this.socketService.streamInfusionConfirmation(deviceId, data);
   }
 
   publishCommand(deviceId, command, payload = {}) {

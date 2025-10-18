@@ -13,6 +13,10 @@ deviceRouter.post("/start/:deviceId",authorizeRoles("admin","attendee"), device.
 deviceRouter.post("/stop/:deviceId", authorizeRoles("admin","attendee"), device.stop);
 deviceRouter.post("/pause/:deviceId", authorizeRoles("admin","attendee"), device.pause);
 deviceRouter.post("/resume/:deviceId", authorizeRoles("admin","attendee"), device.resume);
-deviceRouter.post("/infusion/:deviceId",device.getInfusionDetails);
+
+// Infusion and monitoring endpoints
+deviceRouter.post("/infusion/:deviceId", device.getInfusionDetails);
+deviceRouter.get("/status/:deviceId", authorizeRoles("admin","attendee"), device.getCurrentInfusionStatus);
+deviceRouter.get("/stream/:deviceId", authorizeRoles("admin","attendee"), device.getDeviceStreamData);
 
 export default deviceRouter;

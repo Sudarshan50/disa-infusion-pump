@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,86 +25,139 @@ const DeviceDashboard = () => {
   const [error, setError] = useState<string>("");
   const [wizardOpen, setWizardOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [hasRealInfusionData, setHasRealInfusionData] = useState(false);
+
+  const fetchDeviceData = useCallback(async () => {
+    if (!deviceId) {
+      navigate("/");
+      return;
+    }
+
+    // Check if user has access to this device
+    if (user?.role === 'attendee' && user.deviceId !== deviceId) {
+      setError("Access denied: You don't have permission to access this device");
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setHasRealInfusionData(false); // Reset flag
+      
+      // Fetch real device details for the top ribbon
+      const realDeviceDetails = await deviceApi.getDeviceDetails(deviceId);
+      setDeviceDetails(realDeviceDetails);
+
+      // If device has active infusion and is running/paused, fetch infusion details
+      let activeInfusionDetails = null;
+      if (realDeviceDetails.activeInfusion && 
+          (realDeviceDetails.status === 'running' || realDeviceDetails.status === 'paused')) {
+        try {
+          // Get infusion ID (could be populated object or just ID string)
+          const infusionId = typeof realDeviceDetails.activeInfusion === 'string' 
+            ? realDeviceDetails.activeInfusion 
+            : realDeviceDetails.activeInfusion._id;
+          
+          console.log("🔍 Fetching active infusion details:", { deviceId, infusionId });
+          activeInfusionDetails = await deviceApi.getInfusionDetails(deviceId, infusionId);
+          setHasRealInfusionData(true);
+          console.log("✅ Active infusion details loaded:", activeInfusionDetails);
+          console.log("📋 Patient details skipped:", activeInfusionDetails.patientDetailSkipped);
+        } catch (infusionError) {
+          console.error("❌ Failed to fetch active infusion details:", infusionError);
+        }
+      }
+
+      // Get dummy data for the rest of the functionality
+      const dummyDevice = DUMMY_DEVICE_STATE[deviceId];
+      if (!dummyDevice) {
+        console.log("❌ Device Not Found in Dummy Data", {
+          type: "device_not_found",
+          deviceId,
+          at: new Date().toISOString(),
+        });
+        // Use real device data to create basic state
+        setDeviceState({
+          deviceId: realDeviceDetails.deviceId,
+          location: realDeviceDetails.location,
+          status: realDeviceDetails.status === 'running' ? 'Running' : 
+                 realDeviceDetails.status === 'healthy' ? 'Healthy' :
+                 realDeviceDetails.status === 'issue' ? 'Issue' :
+                 realDeviceDetails.status === 'degraded' ? 'Degraded' : 
+                 realDeviceDetails.status === 'paused' ? 'Paused' : 'Healthy', // Show paused as Paused
+          notifications: [],
+          logs: [],
+          patient: activeInfusionDetails ? (
+            activeInfusionDetails.patientDetailSkipped 
+              ? null // No patient data when skipped
+              : activeInfusionDetails.patient || null
+          ) : null,
+          infusion: activeInfusionDetails ? {
+            flowRateMlMin: activeInfusionDetails.infusion_detail.flowRateMlMin,
+            plannedTimeMin: activeInfusionDetails.infusion_detail.plannedTimeMin,
+            plannedVolumeMl: activeInfusionDetails.infusion_detail.plannedVolumeMl,
+            bolus: activeInfusionDetails.infusion_detail.bolus
+          } : null,
+          progress: null // Will be updated with real-time data
+        });
+      } else {
+        // Update dummy data with real device info and active infusion if available
+        setDeviceState({
+          ...dummyDevice,
+          deviceId: realDeviceDetails.deviceId,
+          location: realDeviceDetails.location,
+          status: realDeviceDetails.status === 'running' ? 'Running' : 
+                 realDeviceDetails.status === 'healthy' ? 'Healthy' :
+                 realDeviceDetails.status === 'issue' ? 'Issue' :
+                 realDeviceDetails.status === 'degraded' ? 'Degraded' : 
+                 realDeviceDetails.status === 'paused' ? 'Paused' : 'Healthy', // Show paused as Paused
+          notifications: [], // Use real notifications from API
+          // Override with real infusion data if available
+          patient: activeInfusionDetails ? (
+            activeInfusionDetails.patientDetailSkipped 
+              ? null // No patient data when skipped
+              : activeInfusionDetails.patient || dummyDevice.patient
+          ) : dummyDevice.patient,
+          infusion: activeInfusionDetails ? {
+            flowRateMlMin: activeInfusionDetails.infusion_detail.flowRateMlMin,
+            plannedTimeMin: activeInfusionDetails.infusion_detail.plannedTimeMin,
+            plannedVolumeMl: activeInfusionDetails.infusion_detail.plannedVolumeMl,
+            bolus: activeInfusionDetails.infusion_detail.bolus
+          } : dummyDevice.infusion
+        });
+      }
+
+      console.log("✅ Device Data Loaded", {
+        deviceId,
+        status: realDeviceDetails.status,
+        location: realDeviceDetails.location,
+        hasActiveInfusion: !!realDeviceDetails.activeInfusion,
+        activeInfusionId: realDeviceDetails.activeInfusion ? 
+          (typeof realDeviceDetails.activeInfusion === 'string' 
+            ? realDeviceDetails.activeInfusion 
+            : realDeviceDetails.activeInfusion._id) : null,
+        infusionDetailsLoaded: !!activeInfusionDetails,
+        patientDetailsSkipped: activeInfusionDetails?.patientDetailSkipped || false,
+        hasPatientData: !!activeInfusionDetails?.patient,
+        timestamp: new Date().toISOString(),
+      });
+
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load device details';
+      setError(errorMessage);
+      console.log("❌ Device Data Load Failed", {
+        deviceId,
+        error: errorMessage,
+        timestamp: new Date().toISOString(),
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [deviceId, navigate, user]);
 
   useEffect(() => {
-    const fetchDeviceData = async () => {
-      if (!deviceId) {
-        navigate("/");
-        return;
-      }
-
-      // Check if user has access to this device
-      if (user?.role === 'attendee' && user.deviceId !== deviceId) {
-        setError("Access denied: You don't have permission to access this device");
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        setIsLoading(true);
-        
-        // Fetch real device details for the top ribbon
-        const realDeviceDetails = await deviceApi.getDeviceDetails(deviceId);
-        setDeviceDetails(realDeviceDetails);
-
-        // Get dummy data for the rest of the functionality
-        const dummyDevice = DUMMY_DEVICE_STATE[deviceId];
-        if (!dummyDevice) {
-          console.log("❌ Device Not Found in Dummy Data", {
-            type: "device_not_found",
-            deviceId,
-            at: new Date().toISOString(),
-          });
-          // Use real device data to create basic state
-          setDeviceState({
-            deviceId: realDeviceDetails.deviceId,
-            location: realDeviceDetails.location,
-            status: realDeviceDetails.status === 'running' ? 'Running' : 
-                   realDeviceDetails.status === 'healthy' ? 'Healthy' :
-                   realDeviceDetails.status === 'issue' ? 'Issue' :
-                   realDeviceDetails.status === 'degraded' ? 'Degraded' : 'Healthy',
-            notifications: [],
-            logs: [],
-            patient: null,
-            infusion: null,
-            progress: null
-          });
-        } else {
-          // Update dummy data with real device info
-          setDeviceState({
-            ...dummyDevice,
-            deviceId: realDeviceDetails.deviceId,
-            location: realDeviceDetails.location,
-            status: realDeviceDetails.status === 'running' ? 'Running' : 
-                   realDeviceDetails.status === 'healthy' ? 'Healthy' :
-                   realDeviceDetails.status === 'issue' ? 'Issue' :
-                   realDeviceDetails.status === 'degraded' ? 'Degraded' : 'Healthy',
-            notifications: [] // Use real notifications from API
-          });
-        }
-
-        console.log("✅ Device Data Loaded", {
-          deviceId,
-          status: realDeviceDetails.status,
-          location: realDeviceDetails.location,
-          timestamp: new Date().toISOString(),
-        });
-
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to load device details';
-        setError(errorMessage);
-        console.log("❌ Device Data Load Failed", {
-          deviceId,
-          error: errorMessage,
-          timestamp: new Date().toISOString(),
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchDeviceData();
-  }, [deviceId, navigate, user]);
+  }, [fetchDeviceData]);
 
   const handleDeleteNotification = (id: string) => {
     if (!deviceState) return;
@@ -134,7 +187,8 @@ const DeviceDashboard = () => {
         status: updatedDetails.status === 'running' ? 'Running' : 
                updatedDetails.status === 'healthy' ? 'Healthy' :
                updatedDetails.status === 'issue' ? 'Issue' :
-               updatedDetails.status === 'degraded' ? 'Degraded' : 'Healthy',
+               updatedDetails.status === 'degraded' ? 'Degraded' :
+               updatedDetails.status === 'paused' ? 'Paused' : 'Healthy',
       } : null);
     } catch (err) {
       console.error('Failed to refresh device details:', err);
@@ -178,7 +232,8 @@ const DeviceDashboard = () => {
         status: updatedDetails.status === 'running' ? 'Running' : 
                updatedDetails.status === 'healthy' ? 'Healthy' :
                updatedDetails.status === 'issue' ? 'Issue' :
-               updatedDetails.status === 'degraded' ? 'Degraded' : 'Healthy',
+               updatedDetails.status === 'degraded' ? 'Degraded' :
+               updatedDetails.status === 'paused' ? 'Paused' : 'Healthy',
       } : null);
 
       console.log(`✅ Device Action Success: ${action}`, {
@@ -227,7 +282,8 @@ const DeviceDashboard = () => {
         status: updatedDetails.status === 'running' ? 'Running' : 
                updatedDetails.status === 'healthy' ? 'Healthy' :
                updatedDetails.status === 'issue' ? 'Issue' :
-               updatedDetails.status === 'degraded' ? 'Degraded' : 'Healthy',
+               updatedDetails.status === 'degraded' ? 'Degraded' :
+               updatedDetails.status === 'paused' ? 'Paused' : 'Healthy',
         infusion: {
           flowRateMlMin: params.flowRateMlMin,
           plannedTimeMin: params.plannedTimeMin,
@@ -389,15 +445,14 @@ const DeviceDashboard = () => {
       </Card>
 
       {/* Running/Paused State */}
-      {(deviceState.status === "Running" || deviceDetails?.status === "paused") &&
-        deviceState.patient &&
+      {(deviceState.status === "Running" || deviceState.status === "Paused") &&
         deviceState.infusion && (
           <div className="space-y-6">
             {/* Controls - First */}
             <Card className="glass">
               <CardHeader>
                 <CardTitle>Controls</CardTitle>
-                {deviceDetails?.status === "paused" && (
+                {deviceState.status === "Paused" && (
                   <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg mt-2">
                     <p className="text-sm text-yellow-800 dark:text-yellow-200">
                       ⏸️ Infusion is currently paused
@@ -411,7 +466,7 @@ const DeviceDashboard = () => {
                   onUpdateDevice={handleUpdateDevice}
                   onDeviceAction={handleDeviceAction}
                   actionLoading={actionLoading}
-                  isPaused={deviceDetails?.status === 'paused'}
+                  isPaused={deviceState.status === 'Paused'}
                 />
               </CardContent>
             </Card>
@@ -466,49 +521,76 @@ const DeviceDashboard = () => {
             <div className="grid md:grid-cols-2 gap-6">
               <Card className="glass">
                 <CardHeader>
-                  <CardTitle className="text-lg">Patient Information</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">Patient Information</CardTitle>
+                    {hasRealInfusionData && deviceState.patient && !deviceState.patient.name?.includes("Dummy") && (
+                      <div className="text-xs text-green-600 dark:text-green-400 font-medium">
+                        ✅ Live Data
+                      </div>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Name</p>
-                      <p className="font-medium">{deviceState.patient.name}</p>
+                  {deviceState.patient ? (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Name</p>
+                        <p className="font-medium">{deviceState.patient.name}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Age</p>
+                        <p className="font-medium">
+                          {deviceState.patient.age} years
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Weight</p>
+                        <p className="font-medium">
+                          {deviceState.patient.weight} kg
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Bed No.</p>
+                        <p className="font-medium">{deviceState.patient.bedNo}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Drug</p>
+                        <p className="font-medium">
+                          {deviceState.patient.drugInfused || "N/A"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Allergies</p>
+                        <p className="font-medium">
+                          {deviceState.patient.allergies || "None"}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Age</p>
-                      <p className="font-medium">
-                        {deviceState.patient.age} years
-                      </p>
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                        <p className="text-lg font-medium text-muted-foreground mb-2">
+                          Patient Details Skipped
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          This infusion was started without patient information
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Weight</p>
-                      <p className="font-medium">
-                        {deviceState.patient.weight} kg
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Bed No.</p>
-                      <p className="font-medium">{deviceState.patient.bedNo}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Drug</p>
-                      <p className="font-medium">
-                        {deviceState.patient.drugInfused || "N/A"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Allergies</p>
-                      <p className="font-medium">
-                        {deviceState.patient.allergies || "None"}
-                      </p>
-                    </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
 
               <Card className="glass">
                 <CardHeader>
-                  <CardTitle className="text-lg">Infusion Details</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">Infusion Details</CardTitle>
+                    {hasRealInfusionData && (
+                      <div className="text-xs text-green-600 dark:text-green-400 font-medium">
+                        ✅ Live Data
+                      </div>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="grid grid-cols-2 gap-4">
@@ -551,7 +633,7 @@ const DeviceDashboard = () => {
 
       {/* Healthy/Stopped State - Can Start Infusion */}
       {(deviceState.status === "Healthy" || deviceDetails?.status === "stopped") && 
-       deviceDetails?.status !== "paused" && (
+       deviceState.status !== "Paused" && (
         <Card className="glass">
           <CardHeader>
             <CardTitle>Actions</CardTitle>
@@ -612,6 +694,7 @@ const DeviceDashboard = () => {
         device={deviceAsDevice}
         onUpdateDevice={handleUpdateDevice}
         onStartInfusion={handleStartInfusion}
+        onRefetchDeviceDetails={fetchDeviceData}
       />
 
       <ScheduleInfusionModal

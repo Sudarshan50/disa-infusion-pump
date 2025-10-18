@@ -137,7 +137,7 @@ export const RunningDeviceActions = ({
         onConfirm={handleStop}
       />
 
-      {device.patient && device.infusion && device.progress && (
+      {device.infusion && (
         <PatientDetailsModal
           open={detailsModalOpen}
           onOpenChange={setDetailsModalOpen}

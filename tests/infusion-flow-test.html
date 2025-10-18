@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infusion Flow Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover {
+            background: #0056b3;
+        }
+        .button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.waiting {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+        }
+        .status.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .input-group {
+            margin: 10px 0;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <h1>Infusion Flow Test</h1>
+    
+    <div class="test-section">
+        <h2>Device Configuration</h2>
+        <div class="input-group">
+            <label for="deviceId">Device ID:</label>
+            <input type="text" id="deviceId" value="PUMP_0001" />
+        </div>
+        <div class="input-group">
+            <label for="backendUrl">Backend URL:</label>
+            <input type="text" id="backendUrl" value="http://localhost:3000" />
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Infusion Parameters</h2>
+        <div class="input-group">
+            <label for="flowRate">Flow Rate (ml/min):</label>
+            <input type="number" id="flowRate" value="10" />
+        </div>
+        <div class="input-group">
+            <label for="plannedTime">Planned Time (min):</label>
+            <input type="number" id="plannedTime" value="60" />
+        </div>
+        <div class="input-group">
+            <label for="plannedVolume">Planned Volume (ml):</label>
+            <input type="number" id="plannedVolume" value="600" />
+        </div>
+        <div class="input-group">
+            <label>
+                <input type="checkbox" id="bolusEnabled" /> Bolus Enabled
+            </label>
+        </div>
+        <div class="input-group">
+            <label for="bolusVolume">Bolus Volume (ml):</label>
+            <input type="number" id="bolusVolume" value="50" disabled />
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Patient Information (Optional)</h2>
+        <div class="input-group">
+            <label for="patientName">Patient Name:</label>
+            <input type="text" id="patientName" value="John Doe" />
+        </div>
+        <div class="input-group">
+            <label for="patientAge">Age:</label>
+            <input type="number" id="patientAge" value="45" />
+        </div>
+        <div class="input-group">
+            <label for="patientWeight">Weight (kg):</label>
+            <input type="number" id="patientWeight" value="70" />
+        </div>
+        <div class="input-group">
+            <label for="bedNo">Bed No:</label>
+            <input type="text" id="bedNo" value="ICU-101" />
+        </div>
+        <div class="input-group">
+            <label>
+                <input type="checkbox" id="skipPatient" /> Skip Patient Details
+            </label>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Actions</h2>
+        <button class="button" onclick="startInfusion()">Start Infusion</button>
+        <button class="button" onclick="simulateDeviceResponse()">Simulate Device Response</button>
+        <button class="button" onclick="getInfusionDetails()">Get Infusion Details</button>
+        <button class="button" onclick="clearLogs()">Clear Logs</button>
+        
+        <div id="status" class="status" style="display: none;"></div>
+        <div id="logs" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Socket.IO Connection Test</h2>
+        <button class="button" onclick="connectSocket()">Connect to Socket</button>
+        <button class="button" onclick="subscribeToDevice()">Subscribe to Device Events</button>
+        <button class="button" onclick="disconnectSocket()">Disconnect Socket</button>
+        
+        <div id="socketStatus" class="status" style="display: none;"></div>
+        <div id="socketLogs" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Device Stream Recovery Test</h2>
+        <button class="button" onclick="connectToDeviceStream()">Connect to Device Stream</button>
+        <button class="button" onclick="getCurrentDeviceStatus()">Get Current Device Status</button>
+        <button class="button" onclick="getDeviceStreamData()">Get Stream History</button>
+        <button class="button" onclick="simulatePageReload()">Simulate Page Reload</button>
+        
+        <div id="streamStatus" class="status" style="display: none;"></div>
+        <div id="streamLogs" class="log"></div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        let socket = null;
+        let currentInfusionId = null;
+
+        // Helper functions
+        function log(message, type = 'info') {
+            const logs = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+            logs.textContent += logEntry;
+            logs.scrollTop = logs.scrollHeight;
+            console.log(message);
+        }
+
+        function logSocket(message, type = 'info') {
+            const logs = document.getElementById('socketLogs');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+            logs.textContent += logEntry;
+            logs.scrollTop = logs.scrollHeight;
+            console.log(message);
+        }
+
+        function showStatus(message, type = 'waiting') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+        }
+
+        function showSocketStatus(message, type = 'waiting') {
+            const status = document.getElementById('socketStatus');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+        }
+
+        function hideStatus() {
+            document.getElementById('status').style.display = 'none';
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').textContent = '';
+            document.getElementById('socketLogs').textContent = '';
+            hideStatus();
+        }
+
+        // Enable/disable bolus volume input based on checkbox
+        document.getElementById('bolusEnabled').addEventListener('change', function() {
+            document.getElementById('bolusVolume').disabled = !this.checked;
+        });
+
+        // Start infusion function
+        async function startInfusion() {
+            const deviceId = document.getElementById('deviceId').value;
+            const backendUrl = document.getElementById('backendUrl').value;
+            const skipPatient = document.getElementById('skipPatient').checked;
+
+            const infusionData = {
+                flowRateMlMin: parseInt(document.getElementById('flowRate').value),
+                plannedTimeMin: parseInt(document.getElementById('plannedTime').value),
+                plannedVolumeMl: parseInt(document.getElementById('plannedVolume').value),
+                bolus: {
+                    enabled: document.getElementById('bolusEnabled').checked,
+                    volumeMl: document.getElementById('bolusEnabled').checked ? 
+                              parseInt(document.getElementById('bolusVolume').value) : 0
+                }
+            };
+
+            let requestBody = { ...infusionData };
+
+            if (!skipPatient) {
+                requestBody.patient = {
+                    name: document.getElementById('patientName').value,
+                    age: parseInt(document.getElementById('patientAge').value),
+                    weight: parseInt(document.getElementById('patientWeight').value),
+                    bedNo: document.getElementById('bedNo').value,
+                    drugInfused: "Saline Solution",
+                    allergies: "None"
+                };
+            }
+
+            showStatus('Starting infusion...', 'waiting');
+            log(`Starting infusion for device: ${deviceId}`);
+            log(`Request payload: ${JSON.stringify(requestBody, null, 2)}`);
+
+            try {
+                const response = await fetch(`${backendUrl}/api/device/${deviceId}/start`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showStatus('✅ Infusion start command sent! Waiting for device confirmation...', 'success');
+                    log(`✅ Success: ${data.message}`);
+                    log(`Response: ${JSON.stringify(data, null, 2)}`);
+                } else {
+                    showStatus(`❌ Error: ${data.message}`, 'error');
+                    log(`❌ Error: ${data.message}`);
+                }
+            } catch (error) {
+                showStatus(`❌ Network Error: ${error.message}`, 'error');
+                log(`❌ Network Error: ${error.message}`);
+            }
+        }
+
+        // Simulate device response (for testing without actual device)
+        function simulateDeviceResponse() {
+            const deviceId = document.getElementById('deviceId').value;
+            log(`🤖 Simulating device response for ${deviceId}`);
+            
+            // Simulate MQTT message from device
+            const mockInfusionConfirmation = {
+                deviceId: deviceId,
+                infusionId: `INF_${Date.now()}`,
+                status: 'confirmed',
+                message: 'Infusion started successfully',
+                timestamp: new Date().toISOString()
+            };
+
+            currentInfusionId = mockInfusionConfirmation.infusionId;
+            
+            log(`🤖 Mock device confirmation: ${JSON.stringify(mockInfusionConfirmation, null, 2)}`);
+            showStatus('✅ Device confirmed! Infusion is now running.', 'success');
+        }
+
+        // Get infusion details
+        async function getInfusionDetails() {
+            if (!currentInfusionId) {
+                log('❌ No infusion ID available. Start an infusion first.');
+                return;
+            }
+
+            const deviceId = document.getElementById('deviceId').value;
+            const backendUrl = document.getElementById('backendUrl').value;
+
+            log(`📋 Fetching infusion details for device: ${deviceId}, infusion: ${currentInfusionId}`);
+
+            try {
+                const response = await fetch(`${backendUrl}/api/device/${deviceId}/infusion`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ infusionId: currentInfusionId })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log(`✅ Infusion details retrieved successfully`);
+                    log(`Details: ${JSON.stringify(data, null, 2)}`);
+                } else {
+                    log(`❌ Error fetching infusion details: ${data.message}`);
+                }
+            } catch (error) {
+                log(`❌ Network Error: ${error.message}`);
+            }
+        }
+
+        // Socket.IO functions
+        function connectSocket() {
+            const backendUrl = document.getElementById('backendUrl').value;
+            
+            if (socket && socket.connected) {
+                logSocket('🔌 Already connected to socket');
+                return;
+            }
+
+            showSocketStatus('🔌 Connecting to Socket.IO...', 'waiting');
+            logSocket(`🔌 Connecting to ${backendUrl}`);
+
+            socket = io(backendUrl, {
+                transports: ['websocket']
+            });
+
+            socket.on('connect', () => {
+                showSocketStatus('✅ Connected to Socket.IO', 'success');
+                logSocket('✅ Connected to socket server');
+            });
+
+            socket.on('disconnect', () => {
+                showSocketStatus('❌ Disconnected from Socket.IO', 'error');
+                logSocket('❌ Disconnected from socket server');
+            });
+
+            socket.on('error', (error) => {
+                showSocketStatus('❌ Socket.IO Error', 'error');
+                logSocket(`❌ Socket error: ${JSON.stringify(error)}`);
+            });
+
+            // Listen for device events
+            socket.on('device:infusion:confirmed', (data) => {
+                logSocket(`💉 Infusion confirmed: ${JSON.stringify(data)}`);
+                currentInfusionId = data.infusionId;
+                showStatus('✅ Device confirmed via Socket.IO! Infusion is now running.', 'success');
+            });
+
+            socket.on('device:status:update', (data) => {
+                logSocket(`📊 Status update: ${JSON.stringify(data)}`);
+            });
+
+            socket.on('device:progress:update', (data) => {
+                logSocket(`📈 Progress update: ${JSON.stringify(data)}`);
+            });
+
+            socket.on('device:error', (data) => {
+                logSocket(`🚨 Device error: ${JSON.stringify(data)}`);
+            });
+        }
+
+        function subscribeToDevice() {
+            if (!socket || !socket.connected) {
+                logSocket('❌ Not connected to socket. Connect first.');
+                return;
+            }
+
+            const deviceId = document.getElementById('deviceId').value;
+            
+            logSocket(`📡 Subscribing to device events for: ${deviceId}`);
+            
+            // Subscribe to various device events
+            socket.emit('subscribe:device:infusion', deviceId);
+            socket.emit('subscribe:device:status', deviceId);
+            socket.emit('subscribe:device:progress', deviceId);
+            socket.emit('subscribe:device:errors', deviceId);
+            
+            logSocket(`✅ Subscribed to all events for device: ${deviceId}`);
+        }
+
+        function disconnectSocket() {
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+                showSocketStatus('🔌 Disconnected', 'waiting');
+                logSocket('🔌 Socket disconnected');
+            }
+        }
+
+        // Device Stream Recovery functions
+        async function connectToDeviceStream() {
+            const deviceId = document.getElementById('deviceId').value;
+            const backendUrl = document.getElementById('backendUrl').value;
+            
+            logStream('🔄 Connecting to device stream...');
+            showStreamStatus('Connecting to device stream...', 'waiting');
+
+            // First connect to socket
+            if (!socket || !socket.connected) {
+                await connectSocket();
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for connection
+            }
+
+            // Get current device status
+            try {
+                const response = await fetch(`${backendUrl}/api/device/status/${deviceId}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    logStream('✅ Device status retrieved');
+                    logStream(`Status: ${JSON.stringify(data.data, null, 2)}`);
+                    
+                    if (data.data.hasActiveInfusion) {
+                        showStreamStatus('✅ Connected - Active infusion found!', 'success');
+                        logStream('💉 Active infusion detected - subscribing to progress updates');
+                        subscribeToDevice();
+                    } else {
+                        showStreamStatus('✅ Connected - No active infusion', 'success');
+                        logStream('📭 No active infusion found');
+                    }
+                } else {
+                    showStreamStatus('❌ Failed to get device status', 'error');
+                    logStream(`❌ Error: ${data.message}`);
+                }
+            } catch (error) {
+                showStreamStatus('❌ Connection failed', 'error');
+                logStream(`❌ Error: ${error.message}`);
+            }
+        }
+
+        async function getCurrentDeviceStatus() {
+            const deviceId = document.getElementById('deviceId').value;
+            const backendUrl = document.getElementById('backendUrl').value;
+            
+            logStream('📋 Getting current device status...');
+
+            try {
+                const response = await fetch(`${backendUrl}/api/device/status/${deviceId}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    logStream('✅ Current device status:');
+                    logStream(JSON.stringify(data.data, null, 2));
+                } else {
+                    logStream(`❌ Error: ${data.message}`);
+                }
+            } catch (error) {
+                logStream(`❌ Error: ${error.message}`);
+            }
+        }
+
+        async function getDeviceStreamData() {
+            const deviceId = document.getElementById('deviceId').value;
+            const backendUrl = document.getElementById('backendUrl').value;
+            
+            logStream('📊 Getting device stream data...');
+
+            try {
+                const response = await fetch(`${backendUrl}/api/device/stream/${deviceId}?type=progress&count=10`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    logStream('✅ Device stream data:');
+                    logStream(JSON.stringify(data.data, null, 2));
+                } else {
+                    logStream(`❌ Error: ${data.message}`);
+                }
+            } catch (error) {
+                logStream(`❌ Error: ${error.message}`);
+            }
+        }
+
+        function simulatePageReload() {
+            logStream('🔄 Simulating page reload...');
+            
+            // Disconnect current connections
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+            }
+            
+            // Simulate storage of device ID (as would happen in real app)
+            localStorage.setItem('currentDeviceId', document.getElementById('deviceId').value);
+            
+            // Wait a moment then reconnect
+            setTimeout(() => {
+                logStream('🔄 Reconnecting after "reload"...');
+                connectToDeviceStream();
+            }, 2000);
+        }
+
+        function logStream(message, type = 'info') {
+            const logs = document.getElementById('streamLogs');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+            logs.textContent += logEntry;
+            logs.scrollTop = logs.scrollHeight;
+            console.log(message);
+        }
+
+        function showStreamStatus(message, type = 'waiting') {
+            const status = document.getElementById('streamStatus');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+        }
+
+        // Auto-connect socket on page load
+        window.addEventListener('load', () => {
+            log('🚀 Infusion Flow Test Page Loaded');
+            log('💡 Instructions:');
+            log('1. Configure device and infusion parameters');
+            log('2. Click "Start Infusion" to send command to backend');
+            log('3. Use "Simulate Device Response" to mock device confirmation');
+            log('4. Connect to Socket.IO to receive real-time updates');
+            log('5. Subscribe to device events to monitor progress');
+        });
+    </script>
+</body>
+</html>
