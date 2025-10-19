@@ -34,7 +34,8 @@
   },
   "nodemonConfig": {
     "ignore": [
-      "client/**"
+      "client/**",
+      "tests/**"
     ]
   }
 }
