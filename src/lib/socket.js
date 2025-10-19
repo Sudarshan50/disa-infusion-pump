@@ -1,6 +1,7 @@
 import { Server } from "socket.io";
 import Device from "../models/Device.js";
 import Infusion from "../models/Infusion.js";
+import { redisClient } from "../lib/redis.js";
 
 class SocketService {
   constructor() {
@@ -28,6 +29,11 @@ class SocketService {
       // Handle device unsubscription
       socket.on("unsubscribe:device", ({ deviceId }) => {
         this.unsubscribeFromDevice(socket, deviceId);
+      });
+
+      // Handle get device notifications from Redis
+      socket.on("get:notifications", ({ deviceId }) => {
+        this.getDeviceNotifications(socket, deviceId);
       });
 
       // Handle client disconnect
@@ -72,6 +78,9 @@ class SocketService {
             socket.emit("device:error", { deviceId, error: currentData.recentErrors[currentData.recentErrors.length - 1] });
           }
         }
+
+        // Send cached notifications from Redis
+        this.sendCachedNotifications(socket, deviceId);
       })
       .catch(error => {
         console.error(`Error checking device ${deviceId}:`, error);
@@ -82,6 +91,58 @@ class SocketService {
   unsubscribeFromDevice(socket, deviceId) {
     socket.leave(`device:${deviceId}`);
     console.log(`📡 Client ${socket.id} unsubscribed from device: ${deviceId}`);
+  }
+
+  async sendCachedNotifications(socket, deviceId) {
+    try {
+      // Get cached notifications from Redis
+      const notifications = await this.getDeviceNotificationsFromRedis(deviceId);
+      if (notifications.length > 0) {
+        console.log(`📬 Sending ${notifications.length} cached notifications to device ${deviceId}`);
+        socket.emit("device:notifications", { deviceId, notifications });
+      }
+    } catch (error) {
+      console.error(`❌ Failed to send cached notifications for device ${deviceId}:`, error);
+    }
+  }
+
+  async getDeviceNotifications(socket, deviceId) {
+    try {
+      const notifications = await this.getDeviceNotificationsFromRedis(deviceId);
+      socket.emit("device:notifications", { deviceId, notifications });
+    } catch (error) {
+      console.error(`❌ Failed to get notifications for device ${deviceId}:`, error);
+      socket.emit("error", { message: "Failed to retrieve notifications" });
+    }
+  }
+
+  async getDeviceNotificationsFromRedis(deviceId) {
+    try {
+      // Get all notification keys for this device
+      const pattern = `notification:${deviceId}:*`;
+      const keys = await redisClient.keys(pattern);
+      
+      if (keys.length === 0) {
+        return [];
+      }
+
+      // Get all notifications
+      const notifications = await Promise.all(
+        keys.map(async (key) => {
+          const data = await redisClient.get(key);
+          return data ? JSON.parse(data) : null;
+        })
+      );
+
+      // Filter out null values and sort by timestamp (newest first)
+      return notifications
+        .filter(notification => notification !== null)
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        
+    } catch (error) {
+      console.error(`❌ Failed to retrieve notifications from Redis for device ${deviceId}:`, error);
+      return [];
+    }
   }
 
   getCurrentDeviceState(deviceId, callback) {
@@ -149,13 +210,33 @@ class SocketService {
     
     deviceData.lastUpdate = errorData.timestamp;
 
-    // Stream to all subscribers
+    // Stream error to all subscribers
     this.io.to(`device:${deviceId}`).emit("device:error", { 
       deviceId, 
       error: errorData 
     });
+
+    // Create and stream notification for the error
+    const notification = {
+      id: errorData.errorId,
+      type: 'error',
+      priority: errorData.severity === 'high' ? 'critical' : 
+               errorData.severity === 'medium' ? 'warning' : 'info',
+      title: `Device Error: ${errorData.type}`,
+      message: errorData.message,
+      timestamp: errorData.timestamp,
+      deviceId: deviceId,
+      data: errorData,
+      showModal: errorData.severity === 'high' // Show modal for high severity errors
+    };
+
+    // Stream notification to all subscribers
+    this.io.to(`device:${deviceId}`).emit("device:notification", { 
+      deviceId, 
+      notification 
+    });
     
-    console.log(`🚨 Streamed error data for device ${deviceId}`);
+    console.log(`🚨 Streamed error data and notification for device ${deviceId}`);
   }
 
   async streamInfusionConfirmation(deviceId, confirmationData) {
@@ -250,6 +331,75 @@ class SocketService {
     });
     
     console.log(`📊 Streamed status data for device ${deviceId}`);
+  }
+
+  async streamInfusionCompletion(deviceId, completionData) {
+    console.log(`🏁 Streaming infusion completion for device ${deviceId}:`, completionData);
+    
+    try {
+      // Update database: Set device status back to healthy and clear activeInfusion
+      const device = await Device.findOneAndUpdate(
+        { deviceId },
+        { 
+          status: 'healthy',
+          activeInfusion: null 
+        },
+        { new: true }
+      );
+
+      if (!device) {
+        console.error(`❌ Device ${deviceId} not found in database`);
+        return;
+      }
+
+      console.log(`✅ Updated device ${deviceId} status to 'healthy' and cleared activeInfusion`);
+      
+      // Find and update the active infusion for this device to completed
+      const infusion = await Infusion.findOneAndUpdate(
+        { 
+          deviceId: deviceId,
+          status: { $in: ['running', 'confirmed'] } // Find active infusion
+        },
+        { 
+          status: 'completed',
+          completedAt: completionData.timestamp || completionData.completedAt || new Date().toISOString(),
+          summary: completionData.summary || {}
+        },
+        { new: true }
+      );
+
+      if (infusion) {
+        console.log(`✅ Updated infusion ${infusion._id} status to 'completed'`);
+      } else {
+        console.warn(`⚠️ No active infusion found for device ${deviceId}`);
+      }
+
+    } catch (error) {
+      console.error(`❌ Database update error for device ${deviceId} completion:`, error);
+    }
+    
+    // Update in-memory device state
+    if (!this.deviceStreams.has(deviceId)) {
+      this.deviceStreams.set(deviceId, {});
+    }
+    
+    const deviceData = this.deviceStreams.get(deviceId);
+    deviceData.currentInfusion = null; // Clear current infusion
+    deviceData.lastUpdate = completionData.timestamp;
+    
+    // Stream to all subscribers
+    const eventData = { 
+      deviceId, 
+      completion: completionData 
+    };
+    
+    console.log(`🚀 Emitting device:infusion:completed to room device:${deviceId}:`, eventData);
+    console.log(`📊 Room device:${deviceId} has ${this.io.sockets.adapter.rooms.get(`device:${deviceId}`)?.size || 0} subscribers`);
+    
+    this.io.to(`device:${deviceId}`).emit("device:infusion:completed", eventData);
+    
+    console.log(`🏁 Streamed infusion completion for device ${deviceId}:`, eventData);
+    console.log(`📡 Broadcasting to room: device:${deviceId}`);
   }
 
   // Method to get connected devices (for debugging/monitoring)

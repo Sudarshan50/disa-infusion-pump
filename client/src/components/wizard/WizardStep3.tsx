@@ -231,7 +231,7 @@ export const WizardStep3 = ({
         onClose={handleCloseWaitingModal}
         deviceId={deviceId}
         onDeviceConfirmed={handleDeviceConfirmation}
-        onRefetchDeviceDetails={onRefetchDeviceDetails}
+        // onRefetchDeviceDetails={onRefetchDeviceDetails}
       />
     </div>
   );

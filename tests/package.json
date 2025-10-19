@@ -1,0 +1,25 @@
+{
+  "name": "infusion-calm-tests",
+  "version": "1.0.0",
+  "description": "Test scripts for infusion device MQTT and API flows",
+  "main": "index.js",
+  "scripts": {
+    "mqtt-simulator": "node mqtt-device-simulator.js",
+    "complete-flow": "node infusion-flow-complete-test.js",
+    "progress-test": "node test-progress-streaming.js",
+    "backend-test": "node backend-connection-test.js"
+  },
+  "dependencies": {
+    "mqtt": "^5.0.0",
+    "axios": "^1.5.0"
+  },
+  "devDependencies": {},
+  "keywords": [
+    "mqtt",
+    "infusion",
+    "testing",
+    "medical-device"
+  ],
+  "author": "Infusion Calm Team",
+  "license": "MIT"
+}

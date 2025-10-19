@@ -1,4 +1,5 @@
 import mqtt from "mqtt";
+import { redisClient } from "./redis.js";
 
 class MQTTService {
   constructor() {
@@ -75,7 +76,13 @@ class MQTTService {
   subscribeToDeviceTopics() {
     if (!this.isConnected) return;
 
-    const topics = ["devices/+/progress", "devices/+/error", "devices/+/status","devices/+/infusion"];
+    const topics = [
+      "devices/+/progress", 
+      "devices/+/error", 
+      "devices/+/status",
+      "devices/+/infusion",
+      "devices/+/completion"  // Added completion topic
+    ];
 
     topics.forEach((topic) => {
       this.client.subscribe(topic, (err) => {
@@ -106,6 +113,9 @@ class MQTTService {
           break;
         case "infusion":
           await this.handleInfusionConfirmation(deviceId, data);
+          break;
+        case "completion":
+          await this.handleInfusionCompletion(deviceId, data);
           break;
         default:
           console.log(`⚠️ Unhandled message type: ${messageType} for device ${deviceId}`);
@@ -141,11 +151,50 @@ class MQTTService {
   async handleDeviceError(deviceId, data) {
     const errorData = {
       deviceId,
-      ...data,
+      errorId: `error_${deviceId}_${Date.now()}`,
       timestamp: new Date().toISOString(),
+      severity: data.severity || 'high', // high, medium, low
+      type: data.type || 'device_error',
+      message: data.message || 'Unknown device error',
+      details: data.details || {},
+      resolved: false,
+      ...data,
     };
 
     console.error(`🚨 Device ${deviceId} error:`, errorData);
+
+    try {
+      // Cache error in Redis for 5 minutes (300 seconds)
+      const redisKey = `device_error:${deviceId}:${errorData.errorId}`;
+      await redisClient.setEx(redisKey, 300, JSON.stringify(errorData));
+      
+      // Also add to device error list for notifications
+      const deviceErrorsKey = `device_errors:${deviceId}`;
+      await redisClient.lPush(deviceErrorsKey, JSON.stringify(errorData));
+      await redisClient.expire(deviceErrorsKey, 300); // 5 minutes
+      
+      console.log(`✅ Error cached in Redis with key: ${redisKey}`);
+      
+      // Add error to notification stream
+      const notificationData = {
+        id: errorData.errorId,
+        type: 'error',
+        priority: errorData.severity === 'high' ? 'critical' : 
+                 errorData.severity === 'medium' ? 'warning' : 'info',
+        title: `Device Error: ${errorData.type}`,
+        message: errorData.message,
+        timestamp: errorData.timestamp,
+        deviceId: deviceId,
+        data: errorData
+      };
+      
+      // Cache notification
+      const notificationKey = `notification:${deviceId}:${errorData.errorId}`;
+      await redisClient.setEx(notificationKey, 300, JSON.stringify(notificationData));
+      
+    } catch (redisError) {
+      console.error(`❌ Failed to cache error in Redis:`, redisError);
+    }
 
     // Stream directly to Socket.IO clients
     if (this.socketService) {
@@ -176,6 +225,28 @@ class MQTTService {
 
     // Stream confirmation to Socket.IO clients (now async)
     await this.socketService.streamInfusionConfirmation(deviceId, data);
+  }
+
+  async handleInfusionCompletion(deviceId, data) {
+    console.log(`🏁 Processing infusion completion for device ${deviceId}:`, data);
+    
+    // Validate the completion has required fields
+    if (!data.completed) {
+      console.warn('⚠️ Device completion status is not "completed":', data);
+      return;
+    }
+
+    console.log(`✅ Valid infusion completion - processing:`, {
+      deviceId,
+      completed: data.completed,
+      completedAt: data.timestamp || data.completedAt,
+      summary: data.summary
+    });
+
+    // Stream completion to Socket.IO clients
+    if (this.socketService) {
+      await this.socketService.streamInfusionCompletion(deviceId, data);
+    }
   }
 
   publishCommand(deviceId, command, payload = {}) {

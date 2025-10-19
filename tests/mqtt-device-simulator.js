@@ -241,11 +241,9 @@ function handleResumeInfusion(payload) {
 // Publishing functions
 function publishInfusionConfirmation() {
   const message = {
-    deviceId: deviceState.id,
     infusionId: deviceState.infusion.infusionId,
-    status: 'confirmed',
-    message: 'Infusion started successfully',
-    timestamp: new Date().toISOString(),
+    confirmed: true,
+    confirmedAt: new Date().toISOString(),
     parameters: {
       flowRateMlMin: deviceState.infusion.flowRateMlMin,
       plannedTimeMin: deviceState.infusion.plannedTimeMin,
@@ -260,6 +258,7 @@ function publishInfusionConfirmation() {
       console.error('❌ Failed to publish infusion confirmation:', err);
     } else {
       console.log('✅ Infusion confirmation sent');
+      console.log(`📋 Confirmation details:`, JSON.stringify(message, null, 2));
     }
   });
 }
@@ -392,6 +391,10 @@ function setupInteractiveCommands() {
       case 't':
         runSelfTest();
         break;
+      case 'flow':
+      case 'f':
+        runFullInfusionFlow();
+        break;
       case 'quit':
       case 'exit':
       case 'q':
@@ -411,6 +414,7 @@ function showHelp() {
   console.log('  status (s) - Show device status');
   console.log('  error (e)  - Simulate device error');
   console.log('  test (t)   - Run self-test');
+  console.log('  flow (f)   - Simulate full infusion flow');
   console.log('  quit (q)   - Exit simulator');
   console.log('');
 }
@@ -450,6 +454,42 @@ function runSelfTest() {
     console.log('✅ Self-test completed successfully');
     publishStatus(deviceState.infusion.running ? 'running' : 'healthy');
   }, 3000);
+}
+
+function runFullInfusionFlow() {
+  console.log('🧪 Running full infusion flow simulation...');
+  console.log('This will simulate: start → confirm → progress → pause → resume → complete');
+  
+  // Step 1: Simulate infusion start (as if command came from backend)
+  setTimeout(() => {
+    console.log('\n📍 Step 1: Simulating infusion start...');
+    const mockStartPayload = {
+      infusionId: '68f36ed1a8f6e4fe2acf5051', // Mock infusion ID
+      flowRateMlMin: 15,
+      plannedTimeMin: 2, // Short time for demo
+      plannedVolumeMl: 30,
+      bolus: {
+        enabled: true,
+        volumeMl: 5
+      }
+    };
+    handleStartInfusion(mockStartPayload);
+  }, 1000);
+  
+  // Step 2: Pause after 30 seconds
+  setTimeout(() => {
+    console.log('\n📍 Step 2: Simulating pause...');
+    handlePauseInfusion({});
+  }, 30000);
+  
+  // Step 3: Resume after 10 seconds
+  setTimeout(() => {
+    console.log('\n📍 Step 3: Simulating resume...');
+    handleResumeInfusion({});
+  }, 40000);
+  
+  console.log('⏱️ Flow will complete in ~2 minutes total');
+  console.log('💡 Watch the frontend dashboard for real-time updates!');
 }
 
 function cleanup() {

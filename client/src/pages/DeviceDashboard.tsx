@@ -7,12 +7,15 @@ import { NotificationsPopover } from "@/components/NotificationsPopover";
 import { RunningDeviceActions } from "@/components/RunningDeviceActions";
 import { StartInfusionWizard } from "@/components/StartInfusionWizard";
 import { ScheduleInfusionModal } from "@/components/ScheduleInfusionModal";
+import { ErrorModal } from "@/components/ErrorModal";
 import { Progress } from "@/components/ui/progress";
 import { DUMMY_DEVICE_STATE, DeviceState, Device } from "@/data/dummyData";
-import { MapPin, Activity, Clock, Droplets, Loader2 } from "lucide-react";
+import { MapPin, Activity, Clock, Droplets, Loader2, Wifi, WifiOff } from "lucide-react";
 import { Footer } from "@/components/Footer";
 import { deviceApi, DeviceDetails } from "@/lib/deviceApi";
 import { useAuth } from "@/hooks/useAuth";
+import { useDeviceSocket } from "@/hooks/useDeviceSocket";
+import audioService from "@/services/audioService";
 
 const DeviceDashboard = () => {
   const { deviceId } = useParams<{ deviceId: string }>();
@@ -26,6 +29,21 @@ const DeviceDashboard = () => {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [hasRealInfusionData, setHasRealInfusionData] = useState(false);
+  const [lastProgressUpdate, setLastProgressUpdate] = useState<string | null>(null);
+
+  // Initialize socket connection for real-time updates
+  const {
+    isConnected: socketConnected,
+    progress: socketProgress,
+    infusionConfirmation,
+    infusionCompletion,
+    notifications,
+    activeNotification,
+    clearInfusionConfirmation,
+    clearInfusionCompletion,
+    clearActiveNotification,
+    dismissNotification,
+  } = useDeviceSocket(deviceId, { autoConnect: true });
 
   const fetchDeviceData = useCallback(async () => {
     if (!deviceId) {
@@ -85,7 +103,7 @@ const DeviceDashboard = () => {
                  realDeviceDetails.status === 'issue' ? 'Issue' :
                  realDeviceDetails.status === 'degraded' ? 'Degraded' : 
                  realDeviceDetails.status === 'paused' ? 'Paused' : 'Healthy', // Show paused as Paused
-          notifications: [],
+          notifications: [], // Will be populated by socket notifications
           logs: [],
           patient: activeInfusionDetails ? (
             activeInfusionDetails.patientDetailSkipped 
@@ -159,12 +177,103 @@ const DeviceDashboard = () => {
     fetchDeviceData();
   }, [fetchDeviceData]);
 
+  // Handle real-time progress updates from socket
+  useEffect(() => {
+    if (socketProgress && deviceState?.infusion && deviceState?.status === 'Running') {
+      console.log('📈 Received real-time progress update:', socketProgress);
+      
+      setDeviceState(prev => prev ? {
+        ...prev,
+        progress: {
+          mode: prev.progress?.mode || "time",
+          timeRemainingMin: socketProgress.timeRemainingMin,
+          volumeRemainingMl: socketProgress.volumeRemainingMl,
+        }
+      } : null);
+      
+      setLastProgressUpdate(new Date().toLocaleTimeString());
+    }
+  }, [socketProgress, deviceState?.infusion, deviceState?.status]);
+
+  // Handle notification sound alerts
+  useEffect(() => {
+    if (notifications.length > 0) {
+      const latestNotification = notifications[notifications.length - 1];
+      console.log('🔊 Playing notification sound for:', latestNotification);
+      audioService.playNotificationSound(latestNotification.priority);
+    }
+  }, [notifications]);
+
+  // Handle error modal display with sound alert
+  useEffect(() => {
+    if (activeNotification) {
+      console.log('🚨 Playing error modal sound for:', activeNotification);
+      // Play sound immediately when error modal appears
+      audioService.playNotificationSound(activeNotification.priority);
+    }
+  }, [activeNotification]);
+
+  // Handle infusion confirmation from socket
+  useEffect(() => {
+    if (infusionConfirmation && deviceId) {
+      console.log('💉 Received infusion confirmation via socket:', infusionConfirmation);
+      
+      // Refetch device data to get updated status and infusion details
+      fetchDeviceData();
+      
+      // Clear the confirmation to prevent repeated processing
+      clearInfusionConfirmation();
+    }
+  }, [infusionConfirmation, deviceId, fetchDeviceData, clearInfusionConfirmation]);
+
+  // Handle infusion completion from socket
+  useEffect(() => {
+    if (infusionCompletion && deviceId) {
+      console.log('🏁 Received infusion completion via socket:', infusionCompletion);
+      
+      // Update device state immediately to show completion
+      setDeviceState(prev => prev ? {
+        ...prev,
+        status: 'Healthy', // Device returns to healthy after completion
+        infusion: null, // Clear infusion data
+        progress: null, // Clear progress data
+        patient: null // Clear patient data (optional - you may want to keep this)
+      } : null);
+      
+      // Refetch device data to get updated status from backend
+      fetchDeviceData();
+      
+      // Clear the completion to prevent repeated processing
+      clearInfusionCompletion();
+      
+      // Show completion notification (optional)
+      console.log('✅ Infusion completed successfully!', {
+        deviceId,
+        summary: infusionCompletion.summary,
+        completedAt: infusionCompletion.completedAt
+      });
+    }
+  }, [infusionCompletion, deviceId, fetchDeviceData, clearInfusionCompletion]);
+
   const handleDeleteNotification = (id: string) => {
     if (!deviceState) return;
     setDeviceState({
       ...deviceState,
       notifications: deviceState.notifications.filter((n) => n.id !== id),
     });
+    // Also dismiss from socket notifications
+    dismissNotification(id);
+  };
+
+  // Convert DeviceNotifications to legacy Notification format for NotificationsPopover
+  const convertToLegacyNotifications = () => {
+    const legacyNotifications = deviceState?.notifications || [];
+    const socketNotifications = notifications.map(notification => ({
+      id: notification.id,
+      ts: notification.timestamp,
+      text: `${notification.title}: ${notification.message}`
+    }));
+    return [...legacyNotifications, ...socketNotifications];
   };
 
   const handleUpdateDevice = async (deviceId: string, updates: Partial<Device>) => {
@@ -260,6 +369,14 @@ const DeviceDashboard = () => {
     plannedTimeMin: number;
     plannedVolumeMl: number;
     bolus?: { enabled: boolean; volumeMl: number };
+    patient?: {
+      name: string;
+      age: number;
+      weight: number;
+      bedNo: string;
+      drugInfused: string;
+      allergies: string;
+    };
   }) => {
     if (!deviceId || !deviceDetails) return;
     
@@ -267,6 +384,7 @@ const DeviceDashboard = () => {
       console.log("🚀 Starting Infusion", {
         deviceId,
         params,
+        hasPatientData: !!params.patient,
         timestamp: new Date().toISOString(),
       });
 
@@ -381,30 +499,28 @@ const DeviceDashboard = () => {
     
     let percent = 0;
     if (deviceState.progress.mode === "time") {
-      // Time-based progress: (elapsed time / total time) * 100
-      const elapsedTime = deviceState.infusion.plannedTimeMin - deviceState.progress.timeRemainingMin;
+      // Time-based progress: (remaining time / total time) * 100 - decreasing bar
       percent = deviceState.infusion.plannedTimeMin > 0 
-        ? (elapsedTime / deviceState.infusion.plannedTimeMin) * 100 
+        ? (deviceState.progress.timeRemainingMin / deviceState.infusion.plannedTimeMin) * 100 
         : 0;
       
-      console.log("🔢 Time Progress Calculation", {
+      console.log("🔢 Time Progress Calculation (Remaining)", {
         plannedTime: deviceState.infusion.plannedTimeMin,
         timeRemaining: deviceState.progress.timeRemainingMin,
-        elapsedTime,
-        percent: percent.toFixed(1)
+        percent: percent.toFixed(1),
+        note: "Bar shows remaining time (decreases as infusion progresses)"
       });
     } else {
-      // Volume-based progress: (delivered volume / total volume) * 100  
-      const deliveredVolume = deviceState.infusion.plannedVolumeMl - deviceState.progress.volumeRemainingMl;
+      // Volume-based progress: (remaining volume / total volume) * 100 - decreasing bar
       percent = deviceState.infusion.plannedVolumeMl > 0 
-        ? (deliveredVolume / deviceState.infusion.plannedVolumeMl) * 100 
+        ? (deviceState.progress.volumeRemainingMl / deviceState.infusion.plannedVolumeMl) * 100 
         : 0;
       
-      console.log("🔢 Volume Progress Calculation", {
+      console.log("🔢 Volume Progress Calculation (Remaining)", {
         plannedVolume: deviceState.infusion.plannedVolumeMl,
         volumeRemaining: deviceState.progress.volumeRemainingMl,
-        deliveredVolume,
-        percent: percent.toFixed(1)
+        percent: percent.toFixed(1),
+        note: "Bar shows remaining volume (decreases as infusion progresses)"
       });
     }
     
@@ -430,11 +546,31 @@ const DeviceDashboard = () => {
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Clock className="h-4 w-4" />
                 <span>Last updated: {new Date(deviceDetails.updatedAt).toLocaleString()}</span>
+                {lastProgressUpdate && (
+                  <>
+                    <span>•</span>
+                    <span>Progress: {lastProgressUpdate}</span>
+                  </>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {/* Real-time connection indicator */}
+              <div className="flex items-center gap-1 text-xs">
+                {socketConnected ? (
+                  <>
+                    <Wifi className="h-3 w-3 text-green-500" />
+                    <span className="text-green-600 dark:text-green-400">Live</span>
+                  </>
+                ) : (
+                  <>
+                    <WifiOff className="h-3 w-3 text-gray-400" />
+                    <span className="text-gray-500">Offline</span>
+                  </>
+                )}
+              </div>
               <NotificationsPopover
-                notifications={deviceState.notifications}
+                notifications={convertToLegacyNotifications()}
                 onDelete={handleDeleteNotification}
                 deviceId={deviceDetails.deviceId}
               />
@@ -505,13 +641,13 @@ const DeviceDashboard = () => {
                     </div>
                     <span className="text-2xl font-bold text-primary">
                       {deviceState.progress.mode === "time"
-                        ? `${deviceState.progress.timeRemainingMin} min`
-                        : `${deviceState.progress.volumeRemainingMl} ml`}
+                        ? `${deviceState.progress.timeRemainingMin} / ${deviceState.infusion.plannedTimeMin} min`
+                        : `${deviceState.progress.volumeRemainingMl} / ${deviceState.infusion.plannedVolumeMl} ml`}
                     </span>
                   </div>
                   <Progress value={progressPercent} className="h-3" />
                   <p className="text-sm text-muted-foreground text-center">
-                    {progressPercent.toFixed(1)}% complete
+                    {(100 - progressPercent).toFixed(1)}% completed • {progressPercent.toFixed(1)}% remaining
                   </p>
                 </CardContent>
               </Card>
@@ -701,6 +837,17 @@ const DeviceDashboard = () => {
         open={scheduleOpen}
         onOpenChange={setScheduleOpen}
         deviceId={deviceState.deviceId}
+      />
+
+      <ErrorModal
+        notification={activeNotification}
+        isOpen={!!activeNotification}
+        onClose={clearActiveNotification}
+        onAcknowledge={() => {
+          if (activeNotification) {
+            dismissNotification(activeNotification.id);
+          }
+        }}
       />
 
       <Footer />

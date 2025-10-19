@@ -16,7 +16,6 @@ interface WaitingForDeviceModalProps {
   onClose: () => void;
   deviceId: string;
   onDeviceConfirmed: (infusionData: InfusionConfirmationData) => void;
-  onRefetchDeviceDetails?: () => void; // New callback to refetch device details
 }
 
 export const WaitingForDeviceModal = ({
@@ -24,7 +23,6 @@ export const WaitingForDeviceModal = ({
   onClose,
   deviceId,
   onDeviceConfirmed,
-  onRefetchDeviceDetails,
 }: WaitingForDeviceModalProps) => {
   const [status, setStatus] = useState<'waiting' | 'confirmed' | 'error'>('waiting');
   const [error, setError] = useState<string>('');
@@ -38,7 +36,7 @@ export const WaitingForDeviceModal = ({
     connect,
     subscribeToDevice,
     clearInfusionConfirmation
-  } = useDeviceSocket(deviceId, { autoConnect: true });
+  } = useDeviceSocket(deviceId, { autoConnect: false }); // Disable auto-connect to prevent conflicts
 
   useEffect(() => {
     if (!isOpen) {
@@ -83,11 +81,6 @@ export const WaitingForDeviceModal = ({
         setStatus('confirmed');
         setConnectionDetails('Device confirmed! Processing...');
         
-        // Refetch device details when device confirms
-        if (onRefetchDeviceDetails) {
-          onRefetchDeviceDetails();
-        }
-        
         setTimeout(() => {
           onDeviceConfirmed({
             deviceId,
@@ -95,13 +88,16 @@ export const WaitingForDeviceModal = ({
             status: 'confirmed',
             timestamp: infusionConfirmation.confirmedAt || new Date().toISOString(),
           });
+          
+          // Refresh the page to get latest data
+          window.location.reload();
         }, 1500);
       } else {
         console.warn('⚠️ Received invalid infusion confirmation:', infusionConfirmation);
         setConnectionDetails('Received invalid device response. Still waiting...');
       }
     }
-  }, [infusionConfirmation, status, deviceId, onDeviceConfirmed, onRefetchDeviceDetails]);
+  }, [infusionConfirmation, status, deviceId, onDeviceConfirmed]);
 
   // Set up timeout for device response and subscribe to device
   useEffect(() => {
@@ -141,11 +137,8 @@ export const WaitingForDeviceModal = ({
   }, [connectionError, isConnected]);
 
   const handleCancel = () => {
-    // Refetch device details when modal closes
-    if (onRefetchDeviceDetails) {
-      onRefetchDeviceDetails();
-    }
-    onClose();
+    // Refresh the page when modal closes to get latest data
+    window.location.reload();
   };
 
   const handleRetry = () => {

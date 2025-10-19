@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
-import { Bell, X } from "lucide-react";
+import { Bell, X, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Separator } from "@/components/ui/separator";
 import { Notification } from "@/data/dummyData";
+import audioService from "@/services/audioService";
 
 interface NotificationsPopoverProps {
   notifications: Notification[];
@@ -21,6 +24,7 @@ export const NotificationsPopover = ({
 }: NotificationsPopoverProps) => {
   const [open, setOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(audioService.getEnabled());
 
   useEffect(() => {
     const checkMobile = () => {
@@ -43,6 +47,17 @@ export const NotificationsPopover = ({
     onDelete(id);
   };
 
+  const handleSoundToggle = (enabled: boolean) => {
+    setSoundEnabled(enabled);
+    audioService.setEnabled(enabled);
+    console.log(`🔊 Sound notifications ${enabled ? 'enabled' : 'disabled'}`);
+    
+    // Play test sound when enabling
+    if (enabled) {
+      audioService.testSound();
+    }
+  };
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -61,8 +76,25 @@ export const NotificationsPopover = ({
         side={isMobile ? "bottom" : "bottom"}
         sideOffset={8}
       >
-        <div className="space-y-2">
-          <h4 className="font-semibold text-sm">Notifications</h4>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="font-semibold text-sm">Notifications</h4>
+            <div className="flex items-center gap-2">
+              {soundEnabled ? (
+                <Volume2 className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <VolumeX className="h-4 w-4 text-muted-foreground" />
+              )}
+              <Switch
+                checked={soundEnabled}
+                onCheckedChange={handleSoundToggle}
+                className="scale-90"
+              />
+            </div>
+          </div>
+          
+          <Separator />
+          
           {notifications.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">
               No notifications

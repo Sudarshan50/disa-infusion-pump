@@ -73,6 +73,14 @@ export const deviceApi = {
       enabled: boolean;
       volumeMl: number;
     };
+    patient?: {
+      name: string;
+      age: number;
+      weight: number;
+      bedNo: string;
+      drugInfused: string;
+      allergies: string;
+    };
   }) => {
     const response = await api.post(`/device/start/${deviceId}`, params);
     return response.data;

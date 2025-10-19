@@ -7,9 +7,25 @@ interface DeviceProgress {
 }
 
 interface DeviceError {
+  errorId: string;
   type: string;
   message: string;
+  severity: 'high' | 'medium' | 'low';
   timestamp: string;
+  details?: Record<string, unknown>;
+  resolved?: boolean;
+}
+
+interface DeviceNotification {
+  id: string;
+  type: 'error' | 'warning' | 'info' | 'success';
+  priority: 'critical' | 'warning' | 'info';
+  title: string;
+  message: string;
+  timestamp: string;
+  deviceId: string;
+  data?: Record<string, unknown>;
+  showModal?: boolean;
 }
 
 interface DeviceStatus {
@@ -29,11 +45,27 @@ interface InfusionConfirmation {
   };
 }
 
+interface InfusionCompletion {
+  completed: boolean;
+  completedAt: string;
+  summary?: {
+    totalTimeMin: number;
+    totalVolumeMl: number;
+    plannedTimeMin: number;
+    plannedVolumeMl: number;
+    avgFlowRate: number;
+    efficiency: number;
+  };
+  deviceStatus?: string;
+}
+
 export interface DeviceStreamData {
   progress?: DeviceProgress;
   error?: DeviceError;
   status?: DeviceStatus;
   infusionConfirmation?: InfusionConfirmation;
+  infusionCompletion?: InfusionCompletion;
+  notifications?: DeviceNotification[];
 }
 
 export interface SocketEventCallbacks {
@@ -41,6 +73,9 @@ export interface SocketEventCallbacks {
   onError?: (deviceId: string, data: DeviceError) => void;
   onStatus?: (deviceId: string, data: DeviceStatus) => void;
   onInfusionConfirmed?: (deviceId: string, data: InfusionConfirmation) => void;
+  onInfusionCompleted?: (deviceId: string, data: InfusionCompletion) => void;
+  onNotification?: (deviceId: string, data: DeviceNotification) => void;
+  onNotifications?: (deviceId: string, data: DeviceNotification[]) => void;
   onConnect?: () => void;
   onDisconnect?: () => void;
   onReconnect?: () => void;
@@ -49,6 +84,7 @@ export interface SocketEventCallbacks {
 class SocketService {
   private socket: Socket | null = null;
   private isConnected = false;
+  private isConnecting = false; // Track connection state
   private baseUrl: string;
   private callbacks: SocketEventCallbacks = {};
 
@@ -66,15 +102,41 @@ class SocketService {
         return;
       }
 
-      console.log('🚀 Attempting Socket.IO connection to:', this.baseUrl);
+      // Prevent multiple connection attempts
+      if (this.isConnecting) {
+        console.log('🔌 Socket connection already in progress, waiting...');
+        // Wait for current connection attempt to complete
+        const checkConnection = () => {
+          if (this.socket?.connected) {
+            this.callbacks = { ...this.callbacks, ...callbacks };
+            resolve();
+          } else if (!this.isConnecting) {
+            reject(new Error('Connection attempt failed'));
+          } else {
+            setTimeout(checkConnection, 100);
+          }
+        };
+        setTimeout(checkConnection, 100);
+        return;
+      }
+
+      console.log('� Attempting Socket.IO connection to:', this.baseUrl);
+      this.isConnecting = true;
       this.callbacks = callbacks;
+      
+      // Disconnect any existing socket first
+      if (this.socket) {
+        this.socket.disconnect();
+        this.socket.removeAllListeners();
+      }
+      
       this.socket = io(this.baseUrl, {
         transports: ['websocket', 'polling'],
         timeout: 20000,
-        forceNew: false, // Don't force new connection every time
-        reconnection: true,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 1000,
+        forceNew: true, // Force new connection to prevent issues
+        reconnection: false, // Disable auto-reconnection to prevent spam
+        reconnectionAttempts: 0,
+        reconnectionDelay: 5000,
       });
 
       // Add a connection timeout
@@ -90,6 +152,7 @@ class SocketService {
         console.log('🔌 Connected to Socket.IO server');
         clearTimeout(connectionTimeout);
         this.isConnected = true;
+        this.isConnecting = false;
         this.callbacks.onConnect?.();
         resolve();
       });
@@ -98,6 +161,7 @@ class SocketService {
         console.log('🔌 Disconnected from Socket.IO server:', reason);
         clearTimeout(connectionTimeout);
         this.isConnected = false;
+        this.isConnecting = false;
         this.callbacks.onDisconnect?.();
       });
 
@@ -111,6 +175,7 @@ class SocketService {
         console.error('🔌 Socket connection error:', error);
         console.error('🔍 Error message:', error.message);
         clearTimeout(connectionTimeout);
+        this.isConnecting = false;
         
         // Provide more helpful error messages
         let errorMessage = error.message;
@@ -159,6 +224,45 @@ class SocketService {
             hasDeviceId: !!data.deviceId,
             hasCallback: !!this.callbacks.onInfusionConfirmed
           });
+        }
+      });
+
+      this.socket.on('device:infusion:completed', (data: { deviceId: string; completion: InfusionCompletion }) => {
+        console.log('🏁 Received infusion completion:', data);
+        console.log('🔍 Completion data details:', {
+          deviceId: data.deviceId,
+          completed: data.completion?.completed,
+          completedAt: data.completion?.completedAt,
+          summary: data.completion?.summary,
+          hasCallback: !!this.callbacks.onInfusionCompleted,
+          callbackFunction: this.callbacks.onInfusionCompleted?.name || 'anonymous'
+        });
+        
+        // Ensure we have valid completion data before calling callback
+        if (data.completion && data.deviceId && this.callbacks.onInfusionCompleted) {
+          this.callbacks.onInfusionCompleted(data.deviceId, data.completion);
+        } else {
+          console.warn('⚠️ Invalid completion data or missing callback:', {
+            hasCompletion: !!data.completion,
+            hasDeviceId: !!data.deviceId,
+            hasCallback: !!this.callbacks.onInfusionCompleted
+          });
+        }
+      });
+
+      this.socket.on('device:notification', (data: { deviceId: string; notification: DeviceNotification }) => {
+        console.log('🔔 Received device notification:', data);
+        
+        if (data.notification && data.deviceId && this.callbacks.onNotification) {
+          this.callbacks.onNotification(data.deviceId, data.notification);
+        }
+      });
+
+      this.socket.on('device:notifications', (data: { deviceId: string; notifications: DeviceNotification[] }) => {
+        console.log('📬 Received device notifications:', data);
+        
+        if (data.notifications && data.deviceId && this.callbacks.onNotifications) {
+          this.callbacks.onNotifications(data.deviceId, data.notifications);
         }
       });
     });
@@ -226,8 +330,10 @@ class SocketService {
   disconnect(): void {
     if (this.socket) {
       this.socket.disconnect();
+      this.socket.removeAllListeners();
       this.socket = null;
       this.isConnected = false;
+      this.isConnecting = false;
     }
   }
 

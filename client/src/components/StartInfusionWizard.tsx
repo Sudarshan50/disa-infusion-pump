@@ -20,6 +20,14 @@ interface StartInfusionWizardProps {
     plannedTimeMin: number;
     plannedVolumeMl: number;
     bolus?: { enabled: boolean; volumeMl: number };
+    patient?: {
+      name: string;
+      age: number;
+      weight: number;
+      bedNo: string;
+      drugInfused: string;
+      allergies: string;
+    };
   }) => Promise<void>;
   onRefetchDeviceDetails?: () => void; // New callback to refetch device details
 }
@@ -86,7 +94,10 @@ export const StartInfusionWizard = ({
       flowRateMlMin: infusionData.flowRateMlMin,
       plannedTimeMin: infusionData.plannedTimeMin,
       plannedVolumeMl: infusionData.plannedVolumeMl,
-      infusionData
+      skippedPatient,
+      hasPatientName: !!patientData.name,
+      patientDataKeys: Object.keys(patientData),
+      willIncludePatient: !skippedPatient && !!patientData.name
     });
 
     if (onStartInfusion && infusionData.flowRateMlMin && infusionData.plannedTimeMin && infusionData.plannedVolumeMl) {
@@ -97,9 +108,24 @@ export const StartInfusionWizard = ({
           plannedTimeMin: infusionData.plannedTimeMin,
           plannedVolumeMl: infusionData.plannedVolumeMl,
           bolus: infusionData.bolus,
+          // Include patient data only if not skipped
+          ...((!skippedPatient && patientData.name) && {
+            patient: {
+              name: patientData.name!,
+              age: patientData.age!,
+              weight: patientData.weight!,
+              bedNo: patientData.bedNo!,
+              drugInfused: patientData.drugInfused || '',
+              allergies: patientData.allergies || 'None'
+            }
+          })
         };
         
-        console.log("🔄 Calling Start Infusion API", { apiParams });
+        console.log("🔄 Calling Start Infusion API", { 
+          apiParams,
+          hasPatientData: !skippedPatient && !!patientData.name,
+          skippedPatient
+        });
         await onStartInfusion(apiParams);
         console.log("✅ API call completed successfully");
       } catch (error) {
