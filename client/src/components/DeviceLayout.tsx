@@ -1,5 +1,11 @@
 import { useState, useEffect } from "react";
-import { Outlet, useNavigate, NavLink, useLocation, useParams } from "react-router-dom";
+import {
+  Outlet,
+  useNavigate,
+  NavLink,
+  useLocation,
+  useParams,
+} from "react-router-dom";
 import { Menu, Home, FileText, LogOut, User, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,7 +35,13 @@ const DeviceLayout = () => {
 
   // Redirect if device ID doesn't match user's assigned device
   useEffect(() => {
-    if (!isLoading && user?.role === 'attendee' && user.deviceId && deviceId && user.deviceId !== deviceId) {
+    if (
+      !isLoading &&
+      user?.role === "attendee" &&
+      user.deviceId &&
+      deviceId &&
+      user.deviceId !== deviceId
+    ) {
       navigate(`/device/${user.deviceId}`);
     }
   }, [user, deviceId, navigate, isLoading]);
@@ -118,7 +130,7 @@ const DeviceLayout = () => {
                 <Menu className="h-5 w-5" />
               </Button>
               <span className="text-lg font-medium truncate">
-                Welcome, {user.email.split('@')[0]}
+                Welcome, {user.email.split("@")[0]}
               </span>
             </div>
 
@@ -139,7 +151,9 @@ const DeviceLayout = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56 glass">
                   <div className="flex flex-col space-y-1 p-2">
-                    <p className="text-sm font-medium">{user.email.split('@')[0]}</p>
+                    <p className="text-sm font-medium">
+                      {user.email.split("@")[0]}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       {user.email}
                     </p>

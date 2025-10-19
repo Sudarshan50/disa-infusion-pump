@@ -97,10 +97,15 @@ export const StartInfusionWizard = ({
       skippedPatient,
       hasPatientName: !!patientData.name,
       patientDataKeys: Object.keys(patientData),
-      willIncludePatient: !skippedPatient && !!patientData.name
+      willIncludePatient: !skippedPatient && !!patientData.name,
     });
 
-    if (onStartInfusion && infusionData.flowRateMlMin && infusionData.plannedTimeMin && infusionData.plannedVolumeMl) {
+    if (
+      onStartInfusion &&
+      infusionData.flowRateMlMin &&
+      infusionData.plannedTimeMin &&
+      infusionData.plannedVolumeMl
+    ) {
       try {
         // Extract the API parameters from infusion data
         const apiParams = {
@@ -109,27 +114,28 @@ export const StartInfusionWizard = ({
           plannedVolumeMl: infusionData.plannedVolumeMl,
           bolus: infusionData.bolus,
           // Include patient data only if not skipped
-          ...((!skippedPatient && patientData.name) && {
-            patient: {
-              name: patientData.name!,
-              age: patientData.age!,
-              weight: patientData.weight!,
-              bedNo: patientData.bedNo!,
-              drugInfused: patientData.drugInfused || '',
-              allergies: patientData.allergies || 'None'
-            }
-          })
+          ...(!skippedPatient &&
+            patientData.name && {
+              patient: {
+                name: patientData.name!,
+                age: patientData.age!,
+                weight: patientData.weight!,
+                bedNo: patientData.bedNo!,
+                drugInfused: patientData.drugInfused || "",
+                allergies: patientData.allergies || "None",
+              },
+            }),
         };
-        
-        console.log("🔄 Calling Start Infusion API", { 
+
+        console.log("🔄 Calling Start Infusion API", {
           apiParams,
           hasPatientData: !skippedPatient && !!patientData.name,
-          skippedPatient
+          skippedPatient,
         });
         await onStartInfusion(apiParams);
         console.log("✅ API call completed successfully");
       } catch (error) {
-        console.error('❌ Failed to start infusion:', error);
+        console.error("❌ Failed to start infusion:", error);
         return; // Don't close modal if API call failed
       }
     } else {
@@ -137,7 +143,7 @@ export const StartInfusionWizard = ({
         hasOnStartInfusion: !!onStartInfusion,
         hasFlowRate: !!infusionData.flowRateMlMin,
         hasPlannedTime: !!infusionData.plannedTimeMin,
-        hasPlannedVolume: !!infusionData.plannedVolumeMl
+        hasPlannedVolume: !!infusionData.plannedVolumeMl,
       });
       // Fallback to dummy behavior if no API integration
       onUpdateDevice(device.deviceId, {

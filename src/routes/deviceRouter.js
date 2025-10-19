@@ -5,18 +5,46 @@ import { authorizeRoles } from "../middleware/authHandler.js";
 const deviceRouter = e.Router();
 
 deviceRouter.post("/create", device.create);
-deviceRouter.get("/:deviceId", authorizeRoles("admin","attendee"), device.getDetailsById);
+deviceRouter.get(
+  "/:deviceId",
+  authorizeRoles("admin", "attendee"),
+  device.getDetailsById
+);
 deviceRouter.post("/health", device.createHealthCheck);
 
 // Device control endpoints
-deviceRouter.post("/start/:deviceId",authorizeRoles("admin","attendee"), device.start);
-deviceRouter.post("/stop/:deviceId", authorizeRoles("admin","attendee"), device.stop);
-deviceRouter.post("/pause/:deviceId", authorizeRoles("admin","attendee"), device.pause);
-deviceRouter.post("/resume/:deviceId", authorizeRoles("admin","attendee"), device.resume);
+deviceRouter.post(
+  "/start/:deviceId",
+  authorizeRoles("admin", "attendee"),
+  device.start
+);
+deviceRouter.post(
+  "/stop/:deviceId",
+  authorizeRoles("admin", "attendee"),
+  device.stop
+);
+deviceRouter.post(
+  "/pause/:deviceId",
+  authorizeRoles("admin", "attendee"),
+  device.pause
+);
+deviceRouter.post(
+  "/resume/:deviceId",
+  authorizeRoles("admin", "attendee"),
+  device.resume
+);
 
 // Infusion and monitoring endpoints
 deviceRouter.post("/infusion/:deviceId", device.getInfusionDetails);
-deviceRouter.get("/status/:deviceId", authorizeRoles("admin","attendee"), device.getCurrentInfusionStatus);
-deviceRouter.get("/stream/:deviceId", authorizeRoles("admin","attendee"), device.getDeviceStreamData);
+deviceRouter.get(
+  "/status/:deviceId",
+  authorizeRoles("admin", "attendee"),
+  device.getCurrentInfusionStatus
+);
+deviceRouter.get(
+  "/stream/:deviceId",
+  authorizeRoles("admin", "attendee"),
+  device.getDeviceStreamData
+);
 
 export default deviceRouter;

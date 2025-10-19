@@ -1,18 +1,18 @@
-import { ReactNode } from 'react';
-import { Navigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
-import { Loader2 } from 'lucide-react';
+import { ReactNode } from "react";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { Loader2 } from "lucide-react";
 
 interface ProtectedRouteProps {
   children: ReactNode;
-  requiredRole?: 'admin' | 'attendee';
+  requiredRole?: "admin" | "attendee";
   redirectTo?: string;
 }
 
-export const ProtectedRoute = ({ 
-  children, 
-  requiredRole, 
-  redirectTo = '/' 
+export const ProtectedRoute = ({
+  children,
+  requiredRole,
+  redirectTo = "/",
 }: ProtectedRouteProps) => {
   const { user, isAuthenticated, isLoading } = useAuth();
 
@@ -30,11 +30,12 @@ export const ProtectedRoute = ({
 
   if (requiredRole && user.role !== requiredRole) {
     // Redirect admin to admin dashboard, attendee to their device
-    const defaultRedirect = user.role === 'admin' 
-      ? '/admin' 
-      : user.deviceId 
-        ? `/device/${user.deviceId}` 
-        : '/';
+    const defaultRedirect =
+      user.role === "admin"
+        ? "/admin"
+        : user.deviceId
+          ? `/device/${user.deviceId}`
+          : "/";
     return <Navigate to={defaultRedirect} replace />;
   }
 

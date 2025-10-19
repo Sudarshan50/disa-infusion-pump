@@ -107,7 +107,7 @@ const AdminLayout = () => {
                 <Menu className="h-5 w-5" />
               </Button>
               <h2 className="text-lg font-semibold text-foreground truncate">
-                Welcome, {user.email.split('@')[0]}
+                Welcome, {user.email.split("@")[0]}
               </h2>
             </div>
 
@@ -128,7 +128,9 @@ const AdminLayout = () => {
                 <DropdownMenuContent className="w-56 glass" align="end">
                   <DropdownMenuLabel>
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium">{user.email.split('@')[0]}</p>
+                      <p className="text-sm font-medium">
+                        {user.email.split("@")[0]}
+                      </p>
                       <p className="text-xs text-muted-foreground">
                         {user.email}
                       </p>

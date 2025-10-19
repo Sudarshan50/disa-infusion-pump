@@ -11,8 +11,8 @@ import { Badge } from "@/components/ui/badge";
 
 interface DeviceNotification {
   id: string;
-  type: 'error' | 'warning' | 'info' | 'success';
-  priority: 'critical' | 'warning' | 'info';
+  type: "error" | "warning" | "info" | "success";
+  priority: "critical" | "warning" | "info";
   title: string;
   message: string;
   timestamp: string;
@@ -28,7 +28,12 @@ interface ErrorModalProps {
   onAcknowledge?: () => void;
 }
 
-export const ErrorModal = ({ notification, isOpen, onClose, onAcknowledge }: ErrorModalProps) => {
+export const ErrorModal = ({
+  notification,
+  isOpen,
+  onClose,
+  onAcknowledge,
+}: ErrorModalProps) => {
   if (!notification) return null;
 
   const handleAcknowledge = () => {
@@ -38,9 +43,9 @@ export const ErrorModal = ({ notification, isOpen, onClose, onAcknowledge }: Err
 
   const getPriorityIcon = () => {
     switch (notification.priority) {
-      case 'critical':
+      case "critical":
         return <AlertTriangle className="h-6 w-6 text-red-500" />;
-      case 'warning':
+      case "warning":
         return <AlertTriangle className="h-6 w-6 text-yellow-500" />;
       default:
         return <Info className="h-6 w-6 text-blue-500" />;
@@ -49,12 +54,12 @@ export const ErrorModal = ({ notification, isOpen, onClose, onAcknowledge }: Err
 
   const getPriorityColor = (): "destructive" | "secondary" | "outline" => {
     switch (notification.priority) {
-      case 'critical':
-        return 'destructive';
-      case 'warning':
-        return 'secondary';
+      case "critical":
+        return "destructive";
+      case "warning":
+        return "secondary";
       default:
-        return 'outline';
+        return "outline";
     }
   };
 
@@ -63,19 +68,19 @@ export const ErrorModal = ({ notification, isOpen, onClose, onAcknowledge }: Err
   };
 
   const getErrorDetails = () => {
-    if (notification.data && typeof notification.data === 'object') {
+    if (notification.data && typeof notification.data === "object") {
       const errorData = notification.data as {
         type?: string;
         severity?: string;
         details?: Record<string, unknown>;
         errorId?: string;
       };
-      
+
       return {
-        errorId: errorData.errorId || 'Unknown',
-        type: errorData.type || 'Device Error',
-        severity: errorData.severity || 'medium',
-        details: errorData.details
+        errorId: errorData.errorId || "Unknown",
+        type: errorData.type || "Device Error",
+        severity: errorData.severity || "medium",
+        details: errorData.details,
       };
     }
     return null;
@@ -153,14 +158,17 @@ export const ErrorModal = ({ notification, isOpen, onClose, onAcknowledge }: Err
                     {errorDetails.severity}
                   </Badge>
                 </div>
-                {errorDetails.details && Object.keys(errorDetails.details).length > 0 && (
-                  <div className="mt-2 pt-2 border-t border-border">
-                    <span className="text-muted-foreground block mb-1">Additional Details:</span>
-                    <pre className="text-xs bg-background p-2 rounded border overflow-auto max-h-20">
-                      {JSON.stringify(errorDetails.details, null, 2)}
-                    </pre>
-                  </div>
-                )}
+                {errorDetails.details &&
+                  Object.keys(errorDetails.details).length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-border">
+                      <span className="text-muted-foreground block mb-1">
+                        Additional Details:
+                      </span>
+                      <pre className="text-xs bg-background p-2 rounded border overflow-auto max-h-20">
+                        {JSON.stringify(errorDetails.details, null, 2)}
+                      </pre>
+                    </div>
+                  )}
               </div>
             </div>
           )}
@@ -174,23 +182,22 @@ export const ErrorModal = ({ notification, isOpen, onClose, onAcknowledge }: Err
               </span>
             </div>
             <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-              This error is stored in Redis and will be available for troubleshooting for the next 5 minutes.
+              This error is stored in Redis and will be available for
+              troubleshooting for the next 5 minutes.
             </p>
           </div>
         </div>
 
         <DialogFooter className="pt-4">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            className="flex-1"
-          >
+          <Button variant="outline" onClick={onClose} className="flex-1">
             Close
           </Button>
           <Button
             onClick={handleAcknowledge}
             className="flex-1"
-            variant={notification.priority === 'critical' ? 'destructive' : 'default'}
+            variant={
+              notification.priority === "critical" ? "destructive" : "default"
+            }
           >
             OK - Acknowledge
           </Button>

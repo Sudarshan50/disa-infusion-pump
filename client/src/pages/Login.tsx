@@ -20,7 +20,7 @@ const Login = () => {
   const navigate = useNavigate();
   const { deviceId: urlDeviceId } = useParams();
   const { login, isAuthenticated, user, isLoading: authLoading } = useAuth();
-  
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [attendeeEmail, setAttendeeEmail] = useState("");
@@ -32,9 +32,9 @@ const Login = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated && user && !authLoading) {
-      if (user.role === 'admin') {
-        navigate('/admin');
-      } else if (user.role === 'attendee' && user.deviceId) {
+      if (user.role === "admin") {
+        navigate("/admin");
+      } else if (user.role === "attendee" && user.deviceId) {
         navigate(`/device/${user.deviceId}`);
       }
     }
@@ -44,7 +44,7 @@ const Login = () => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
-    
+
     try {
       await login(email, password);
       console.log("🔐 Admin Login Success", {
@@ -53,7 +53,7 @@ const Login = () => {
       });
       // Navigation will be handled by useEffect
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Login failed';
+      const errorMessage = err instanceof Error ? err.message : "Login failed";
       setError(errorMessage);
       console.log("🔐 Admin Login Failed", {
         email,
@@ -92,7 +92,7 @@ const Login = () => {
       });
       // Navigation will be handled by useEffect
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Login failed';
+      const errorMessage = err instanceof Error ? err.message : "Login failed";
       setDeviceError(errorMessage);
       console.log("🔐 Device Login Failed", {
         type: "device_login_failed",
@@ -178,8 +178,8 @@ const Login = () => {
                       <span>{deviceError}</span>
                     </div>
                   )}
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     className="w-full h-12 text-base"
                     disabled={isLoading}
                   >
@@ -232,8 +232,8 @@ const Login = () => {
                         className="h-12"
                       />
                     </div>
-                    <Button 
-                      type="submit" 
+                    <Button
+                      type="submit"
                       className="w-full h-12 text-base"
                       disabled={isLoading}
                     >

@@ -90,22 +90,22 @@ auth.login = asyncErrorHandler(async (req, res) => {
 });
 
 auth.updateUser = asyncErrorHandler(async (req, res) => {
-  const {name,email} = req.body;
+  const { name, email } = req.body;
   const userId = req.user.id;
 
   const checkUser = await User.findById(userId);
   if (!checkUser) {
     throw new ForbiddenError("User not found");
   }
-  if(email){
-    const emailExists = await User.findOne({email:email});
-    if(emailExists && emailExists._id.toString() !== userId){
+  if (email) {
+    const emailExists = await User.findOne({ email: email });
+    if (emailExists && emailExists._id.toString() !== userId) {
       throw new BadRequestError("Email already in use");
     }
   }
   const updatedUser = await User.findByIdAndUpdate(
     userId,
-    { $set: { name:name || checkUser.name, email:email || checkUser.email } },
+    { $set: { name: name || checkUser.name, email: email || checkUser.email } },
     { new: true }
   );
   successResponse(res, { user: updatedUser }, "User updated successfully", 200);

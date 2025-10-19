@@ -33,7 +33,7 @@ export const PatientDetailsModal = ({
 
   const getProgressValue = () => {
     if (!device.progress) return 0;
-    
+
     if (progressMode === "time") {
       const remaining = device.progress.timeRemainingMin;
       const total = device.infusion!.plannedTimeMin;
@@ -47,7 +47,7 @@ export const PatientDetailsModal = ({
 
   const getRemainingValue = () => {
     if (!device.progress) return "N/A";
-    
+
     if (progressMode === "time") {
       return `${device.progress.timeRemainingMin} min`;
     } else {
@@ -102,8 +102,12 @@ export const PatientDetailsModal = ({
                     <p className="font-semibold">{device.patient.bedNo}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Drug Infused</p>
-                    <p className="font-semibold">{device.patient.drugInfused}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Drug Infused
+                    </p>
+                    <p className="font-semibold">
+                      {device.patient.drugInfused}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Allergies</p>
@@ -182,7 +186,11 @@ export const PatientDetailsModal = ({
                         : "Volume Remaining"}
                     </h3>
                   </div>
-                  <Button variant="outline" size="sm" onClick={handleToggleMode}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleToggleMode}
+                  >
                     Switch to {progressMode === "time" ? "Volume" : "Time"}
                   </Button>
                 </div>
@@ -217,7 +225,8 @@ export const PatientDetailsModal = ({
                       Progress Data Unavailable
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Real-time progress tracking is not available for this infusion
+                      Real-time progress tracking is not available for this
+                      infusion
                     </p>
                   </div>
                 </div>

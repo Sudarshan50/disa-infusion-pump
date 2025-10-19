@@ -8,7 +8,10 @@ import { PatientDetailsModal } from "./PatientDetailsModal";
 interface RunningDeviceActionsProps {
   device: Device;
   onUpdateDevice: (deviceId: string, updates: Partial<Device>) => void;
-  onDeviceAction?: (action: 'pause' | 'resume' | 'stop', params?: Record<string, unknown>) => Promise<void>;
+  onDeviceAction?: (
+    action: "pause" | "resume" | "stop",
+    params?: Record<string, unknown>
+  ) => Promise<void>;
   actionLoading?: string;
   isPaused?: boolean;
 }
@@ -31,7 +34,7 @@ export const RunningDeviceActions = ({
       action,
       timestamp: new Date().toISOString(),
     });
-    
+
     if (onDeviceAction) {
       try {
         await onDeviceAction(action, { reason: `${action} requested by user` });
@@ -48,12 +51,12 @@ export const RunningDeviceActions = ({
       action: "stop",
       timestamp: new Date().toISOString(),
     });
-    
+
     if (onDeviceAction) {
       try {
-        await onDeviceAction('stop', { reason: 'Stop requested by user' });
+        await onDeviceAction("stop", { reason: "Stop requested by user" });
       } catch (error) {
-        console.error('Failed to stop infusion:', error);
+        console.error("Failed to stop infusion:", error);
       }
     } else {
       // Fallback to dummy behavior if no API integration
@@ -74,9 +77,9 @@ export const RunningDeviceActions = ({
           onClick={() => setPauseModalOpen(true)}
           variant="outline"
           className="flex-1 min-w-[140px] h-12"
-          disabled={actionLoading === 'pause' || actionLoading === 'resume'}
+          disabled={actionLoading === "pause" || actionLoading === "resume"}
         >
-          {actionLoading === 'pause' || actionLoading === 'resume' ? (
+          {actionLoading === "pause" || actionLoading === "resume" ? (
             "Loading..."
           ) : isPaused ? (
             <>
@@ -94,9 +97,9 @@ export const RunningDeviceActions = ({
           onClick={() => setStopModalOpen(true)}
           variant="destructive"
           className="flex-1 min-w-[140px] h-12"
-          disabled={actionLoading === 'stop'}
+          disabled={actionLoading === "stop"}
         >
-          {actionLoading === 'stop' ? (
+          {actionLoading === "stop" ? (
             "Stopping..."
           ) : (
             <>

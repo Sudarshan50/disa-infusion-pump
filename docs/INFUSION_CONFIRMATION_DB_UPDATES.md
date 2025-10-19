@@ -7,6 +7,7 @@ When a device confirms an infusion via MQTT, the system now automatically update
 ## Database Updates
 
 ### Device Updates
+
 When an infusion confirmation is received:
 
 1. **Device Status** → Set to `"running"`
@@ -16,24 +17,25 @@ When an infusion confirmation is received:
 // Device update
 await Device.findOneAndUpdate(
   { deviceId },
-  { 
-    status: 'running',
-    activeInfusion: confirmationData.infusionId 
+  {
+    status: "running",
+    activeInfusion: confirmationData.infusionId,
   },
   { new: true }
 );
 ```
 
 ### Infusion Updates
+
 The confirmed infusion is also updated:
 
 1. **Infusion Status** → Set to `"running"`
 
 ```javascript
-// Infusion update  
+// Infusion update
 await Infusion.findByIdAndUpdate(
   confirmationData.infusionId,
-  { status: 'running' },
+  { status: "running" },
   { new: true }
 );
 ```
@@ -41,11 +43,13 @@ await Infusion.findByIdAndUpdate(
 ## Status Flow
 
 ### Device Status Flow
+
 ```
 idle/degraded → running → completed/stopped
 ```
 
-### Infusion Status Flow  
+### Infusion Status Flow
+
 ```
 pending → running → completed/cancelled
 ```
@@ -98,14 +102,16 @@ node tests/test-db-verification.js check DEVICE-001 673f3f57b2b7c2d74c123456
 ### Expected Results
 
 Before confirmation:
+
 ```
 Device DEVICE-001: status="idle", activeInfusion=null
 Infusion 673f...: status="pending"
 ```
 
 After confirmation:
+
 ```
-Device DEVICE-001: status="running", activeInfusion="673f..."  
+Device DEVICE-001: status="running", activeInfusion="673f..."
 Infusion 673f...: status="running"
 ```
 
@@ -130,6 +136,7 @@ All database updates are logged with detailed information:
 ## Schema Changes
 
 ### Infusion Model
+
 Added `status` field to track infusion lifecycle:
 
 ```javascript
@@ -141,6 +148,7 @@ status: {
 ```
 
 ### Device Model
+
 The `status` field already existed with support for "running":
 
 ```javascript
@@ -161,9 +169,10 @@ The frontend will receive the confirmation via Socket.IO and can:
 4. Transition to monitoring UI
 
 The confirmation event is broadcasted as:
+
 ```javascript
 socket.emit("device:infusion:confirmed", {
   deviceId,
-  confirmation: confirmationData
+  confirmation: confirmationData,
 });
 ```

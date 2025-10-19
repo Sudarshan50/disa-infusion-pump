@@ -1,4 +1,4 @@
-import api from './api';
+import api from "./api";
 
 export interface LoginCredentials {
   email: string;
@@ -9,7 +9,7 @@ export interface LoginCredentials {
 export interface User {
   id: string;
   email: string;
-  role: 'admin' | 'attendee';
+  role: "admin" | "attendee";
   deviceId?: string;
 }
 
@@ -27,13 +27,18 @@ interface ApiError {
 
 class AuthService {
   // Login user (admin or attendee)
-  async login(credentials: LoginCredentials): Promise<{ token: string; user: User }> {
+  async login(
+    credentials: LoginCredentials
+  ): Promise<{ token: string; user: User }> {
     try {
-      const response = await api.post<{ data: AuthResponse; message: string }>('/auth/login', credentials);
+      const response = await api.post<{ data: AuthResponse; message: string }>(
+        "/auth/login",
+        credentials
+      );
       const { token } = response.data.data;
-      
+
       // Decode JWT to get user info (basic decode without verification since backend handles security)
-      const payload = JSON.parse(atob(token.split('.')[1]));
+      const payload = JSON.parse(atob(token.split(".")[1]));
       const user: User = {
         id: payload.id,
         email: payload.email,
@@ -42,13 +47,14 @@ class AuthService {
       };
 
       // Store token and user data
-      localStorage.setItem('auth_token', token);
-      localStorage.setItem('user_data', JSON.stringify(user));
+      localStorage.setItem("auth_token", token);
+      localStorage.setItem("user_data", JSON.stringify(user));
 
       return { token, user };
     } catch (error: unknown) {
-      console.error('Login error:', error);
-      const errorMessage = (error as ApiError).response?.data?.message || 'Login failed';
+      console.error("Login error:", error);
+      const errorMessage =
+        (error as ApiError).response?.data?.message || "Login failed";
       throw new Error(errorMessage);
     }
   }
@@ -58,13 +64,14 @@ class AuthService {
     name: string;
     email: string;
     passWord: string;
-    role: 'admin' | 'attendee';
+    role: "admin" | "attendee";
   }): Promise<void> {
     try {
-      await api.post('/auth/create', userData);
+      await api.post("/auth/create", userData);
     } catch (error: unknown) {
-      console.error('Create user error:', error);
-      const errorMessage = (error as ApiError).response?.data?.message || 'User creation failed';
+      console.error("Create user error:", error);
+      const errorMessage =
+        (error as ApiError).response?.data?.message || "User creation failed";
       throw new Error(errorMessage);
     }
   }
@@ -72,35 +79,36 @@ class AuthService {
   // Update user
   async updateUser(userData: { name?: string; email?: string }): Promise<User> {
     try {
-      const response = await api.patch('/auth/update', userData);
+      const response = await api.patch("/auth/update", userData);
       const updatedUser = response.data.data.user;
-      
+
       // Update stored user data
       const currentUser = this.getCurrentUser();
       if (currentUser) {
         const newUserData = { ...currentUser, ...updatedUser };
-        localStorage.setItem('user_data', JSON.stringify(newUserData));
+        localStorage.setItem("user_data", JSON.stringify(newUserData));
         return newUserData;
       }
-      
+
       return updatedUser;
     } catch (error: unknown) {
-      console.error('Update user error:', error);
-      const errorMessage = (error as ApiError).response?.data?.message || 'User update failed';
+      console.error("Update user error:", error);
+      const errorMessage =
+        (error as ApiError).response?.data?.message || "User update failed";
       throw new Error(errorMessage);
     }
   }
 
   // Logout user
   logout(): void {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('user_data');
+    localStorage.removeItem("auth_token");
+    localStorage.removeItem("user_data");
   }
 
   // Get current user from localStorage
   getCurrentUser(): User | null {
     try {
-      const userData = localStorage.getItem('user_data');
+      const userData = localStorage.getItem("user_data");
       return userData ? JSON.parse(userData) : null;
     } catch {
       return null;
@@ -109,7 +117,7 @@ class AuthService {
 
   // Get current token
   getToken(): string | null {
-    return localStorage.getItem('auth_token');
+    return localStorage.getItem("auth_token");
   }
 
   // Check if user is authenticated
@@ -120,7 +128,7 @@ class AuthService {
   }
 
   // Check if user has specific role
-  hasRole(role: 'admin' | 'attendee'): boolean {
+  hasRole(role: "admin" | "attendee"): boolean {
     const user = this.getCurrentUser();
     return user?.role === role;
   }

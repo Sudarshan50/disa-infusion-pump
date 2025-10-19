@@ -1,10 +1,10 @@
-import api from './api';
+import api from "./api";
 
 export interface DeviceDetails {
   _id: string;
   deviceId: string;
   location: string;
-  status: 'healthy' | 'issue' | 'running' | 'paused' | 'stopped' | 'degraded';
+  status: "healthy" | "issue" | "running" | "paused" | "stopped" | "degraded";
   activeInfusion?: InfusionDetails | string | null; // Can be populated or just ID
   notifications: unknown[];
   logs: unknown[];
@@ -65,40 +65,49 @@ export const deviceApi = {
   },
 
   // Start infusion
-  startInfusion: async (deviceId: string, params: {
-    flowRateMlMin: number;
-    plannedTimeMin: number;
-    plannedVolumeMl: number;
-    bolus?: {
-      enabled: boolean;
-      volumeMl: number;
-    };
-    patient?: {
-      name: string;
-      age: number;
-      weight: number;
-      bedNo: string;
-      drugInfused: string;
-      allergies: string;
-    };
-  }) => {
+  startInfusion: async (
+    deviceId: string,
+    params: {
+      flowRateMlMin: number;
+      plannedTimeMin: number;
+      plannedVolumeMl: number;
+      bolus?: {
+        enabled: boolean;
+        volumeMl: number;
+      };
+      patient?: {
+        name: string;
+        age: number;
+        weight: number;
+        bedNo: string;
+        drugInfused: string;
+        allergies: string;
+      };
+    }
+  ) => {
     const response = await api.post(`/device/start/${deviceId}`, params);
     return response.data;
   },
 
   // Stop infusion
-  stopInfusion: async (deviceId: string, params?: {
-    reason?: string;
-    emergency?: boolean;
-  }) => {
+  stopInfusion: async (
+    deviceId: string,
+    params?: {
+      reason?: string;
+      emergency?: boolean;
+    }
+  ) => {
     const response = await api.post(`/device/stop/${deviceId}`, params || {});
     return response.data;
   },
 
   // Pause infusion
-  pauseInfusion: async (deviceId: string, params?: {
-    reason?: string;
-  }) => {
+  pauseInfusion: async (
+    deviceId: string,
+    params?: {
+      reason?: string;
+    }
+  ) => {
     const response = await api.post(`/device/pause/${deviceId}`, params || {});
     return response.data;
   },
@@ -110,10 +119,16 @@ export const deviceApi = {
   },
 
   // Get infusion details
-  getInfusionDetails: async (deviceId: string, infusionId: string): Promise<InfusionDetails> => {
-    const response = await api.post<InfusionApiResponse>(`/device/infusion/${deviceId}`, {
-      infusionId
-    });
+  getInfusionDetails: async (
+    deviceId: string,
+    infusionId: string
+  ): Promise<InfusionDetails> => {
+    const response = await api.post<InfusionApiResponse>(
+      `/device/infusion/${deviceId}`,
+      {
+        infusionId,
+      }
+    );
     return response.data.data;
-  }
+  },
 };

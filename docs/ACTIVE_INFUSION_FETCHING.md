@@ -3,16 +3,19 @@
 ## Overview
 
 The DeviceDashboard now automatically fetches active infusion details from the backend when:
+
 - Device has an `activeInfusion` field populated
 - Device status is `running` or `paused`
 
 ## Implementation Details
 
 ### 1. Backend Changes
+
 - **Device Controller**: Updated `getDetailsById` to populate `activeInfusion` field
 - **Device Model**: Already includes `activeInfusion` reference to Infusion
 
 ### 2. Frontend Changes
+
 - **DeviceDetails Interface**: Added optional `activeInfusion` field
 - **DeviceDashboard**: Enhanced `fetchDeviceData` to fetch infusion details when available
 - **UI Indicators**: Added "✅ Live Data" badges when real infusion data is loaded
@@ -29,6 +32,7 @@ The DeviceDashboard now automatically fetches active infusion details from the b
 ## Expected Behavior
 
 ### When Device Has Active Infusion
+
 1. Dashboard loads device details
 2. Checks if device has `activeInfusion` and status is `running`/`paused`
 3. **Automatically fetches infusion details** from backend
@@ -36,6 +40,7 @@ The DeviceDashboard now automatically fetches active infusion details from the b
 5. Shows "✅ Live Data" indicators on relevant cards
 
 ### When Device Has No Active Infusion
+
 1. Dashboard loads device details
 2. No additional API calls made
 3. Uses dummy data or shows empty state
@@ -51,7 +56,7 @@ The DeviceDashboard now automatically fetches active infusion details from the b
   patient: { name, age, weight, bedNo, drugInfused, allergies },
   infusion_detail: {
     flowRateMlMin,
-    plannedTimeMin, 
+    plannedTimeMin,
     plannedVolumeMl,
     bolus: { enabled, volumeMl }
   }
@@ -72,18 +77,21 @@ The DeviceDashboard now automatically fetches active infusion details from the b
 ## Testing
 
 ### Test Scenario 1: Device with Active Infusion
+
 1. Start an infusion through the wizard
-2. Wait for device confirmation 
+2. Wait for device confirmation
 3. Refresh the dashboard
 4. **Expected**: Real patient and infusion data displayed with "✅ Live Data" badges
 
-### Test Scenario 2: Device without Active Infusion  
+### Test Scenario 2: Device without Active Infusion
+
 1. View a device that hasn't started any infusion
 2. **Expected**: Dummy data or empty state, no "Live Data" badges
 
 ### Test Scenario 3: Paused Infusion
+
 1. Start an infusion and let it confirm
-2. Pause the infusion  
+2. Pause the infusion
 3. Refresh the dashboard
 4. **Expected**: Real infusion data still displayed since device is paused
 
@@ -107,7 +115,7 @@ The system logs detailed information about infusion fetching:
 
 - **Real-time accuracy**: Shows actual patient and infusion data from database
 - **Seamless experience**: Automatically switches between dummy and real data
-- **Visual feedback**: Clear indicators when real data is loaded  
+- **Visual feedback**: Clear indicators when real data is loaded
 - **Fallback gracefully**: Still works if infusion details can't be fetched
 
 ## Future Enhancements

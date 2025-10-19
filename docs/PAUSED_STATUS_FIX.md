@@ -1,9 +1,11 @@
 # Paused Status Handling Fix
 
 ## Issue
+
 The paused device status was not being properly displayed in the top status chip. Paused devices were showing as "Running" in the status chip while only showing the pause indicator in the controls section.
 
 ## Root Cause
+
 1. **DeviceStatus Type**: The `DeviceStatus` type didn't include "Paused" as a valid value
 2. **Status Mapping**: In `fetchDeviceData`, paused devices were being mapped to "Running" status
 3. **StatusChip Component**: Didn't have CSS styling for paused status
@@ -12,18 +14,27 @@ The paused device status was not being properly displayed in the top status chip
 ## Changes Made
 
 ### 1. Updated DeviceStatus Type
+
 ```typescript
 // client/src/data/dummyData.ts
-export type DeviceStatus = "Healthy" | "Running" | "Issue" | "Degraded" | "Paused";
+export type DeviceStatus =
+  | "Healthy"
+  | "Running"
+  | "Issue"
+  | "Degraded"
+  | "Paused";
 ```
 
 ### 2. Fixed Status Mapping
+
 Updated all status mapping functions to properly handle paused status:
+
 ```typescript
 status: realDeviceDetails.status === 'paused' ? 'Paused' : // Show paused as Paused
 ```
 
 ### 3. Enhanced StatusChip Component
+
 ```typescript
 // client/src/components/StatusChip.tsx
 case "Paused":
@@ -31,6 +42,7 @@ case "Paused":
 ```
 
 ### 4. Added CSS Styling
+
 ```css
 /* client/src/index.css */
 --status-paused: 43 74% 66%;
@@ -41,6 +53,7 @@ case "Paused":
 ```
 
 ### 5. Updated UI Logic
+
 - Running/Paused controls now check for both "Running" and "Paused" status
 - Paused indicator uses `deviceState.status === "Paused"`
 - Start infusion button excludes paused devices
@@ -48,17 +61,20 @@ case "Paused":
 ## Expected Behavior
 
 ### When Device is Paused:
+
 1. **Top Status Chip**: Shows "Paused" with yellow styling
 2. **Controls Section**: Shows "⏸️ Infusion is currently paused" message
 3. **Running Controls**: Resume/Stop actions are available
 4. **Start Infusion**: Button is hidden (device already has active infusion)
 
 ### When Device is Running:
+
 1. **Top Status Chip**: Shows "Running" with orange styling
 2. **Controls Section**: Shows pause/stop actions
 3. **No Pause Message**: Displayed
 
 ### When Device is Healthy:
+
 1. **Top Status Chip**: Shows "Healthy" with green styling
 2. **Start Infusion**: Button is available
 3. **No Running Controls**: Displayed
@@ -71,6 +87,7 @@ case "Paused":
 ## Testing
 
 To test the paused status:
+
 1. Start an infusion through the wizard
 2. Wait for device confirmation
 3. Pause the infusion using the pause button

@@ -1,5 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import socketService, { DeviceStreamData, SocketEventCallbacks } from '../lib/socketService';
+import { useState, useEffect, useCallback, useRef } from "react";
+import socketService, {
+  DeviceStreamData,
+  SocketEventCallbacks,
+} from "../lib/socketService";
 
 interface DeviceProgress {
   timeRemainingMin: number;
@@ -11,7 +14,7 @@ interface DeviceError {
   errorId: string;
   type: string;
   message: string;
-  severity: 'high' | 'medium' | 'low';
+  severity: "high" | "medium" | "low";
   timestamp: string;
   details?: Record<string, unknown>;
   resolved?: boolean;
@@ -19,8 +22,8 @@ interface DeviceError {
 
 interface DeviceNotification {
   id: string;
-  type: 'error' | 'warning' | 'info' | 'success';
-  priority: 'critical' | 'warning' | 'info';
+  type: "error" | "warning" | "info" | "success";
+  priority: "critical" | "warning" | "info";
   title: string;
   message: string;
   timestamp: string;
@@ -78,7 +81,10 @@ export interface DeviceSocketState {
   activeNotification: DeviceNotification | null; // For modal display
 }
 
-export const useDeviceSocket = (deviceId?: string, options: UseDeviceSocketOptions = {}) => {
+export const useDeviceSocket = (
+  deviceId?: string,
+  options: UseDeviceSocketOptions = {}
+) => {
   const [state, setState] = useState<DeviceSocketState>({
     isConnected: false,
     isConnecting: false,
@@ -105,32 +111,32 @@ export const useDeviceSocket = (deviceId?: string, options: UseDeviceSocketOptio
   const connect = useCallback(async () => {
     if (state.isConnected || state.isConnecting) return;
 
-    setState(prev => ({ ...prev, isConnecting: true, error: null }));
+    setState((prev) => ({ ...prev, isConnecting: true, error: null }));
 
     try {
       const callbacks: SocketEventCallbacks = {
         onConnect: () => {
-          setState(prev => ({ 
-            ...prev, 
-            isConnected: true, 
-            isConnecting: false, 
-            error: null 
+          setState((prev) => ({
+            ...prev,
+            isConnected: true,
+            isConnecting: false,
+            error: null,
           }));
         },
         onDisconnect: () => {
-          setState(prev => ({ 
-            ...prev, 
-            isConnected: false, 
-            isConnecting: false 
+          setState((prev) => ({
+            ...prev,
+            isConnected: false,
+            isConnecting: false,
           }));
           isSubscribed.current = false;
         },
         onReconnect: () => {
-          setState(prev => ({ 
-            ...prev, 
-            isConnected: true, 
-            isConnecting: false, 
-            error: null 
+          setState((prev) => ({
+            ...prev,
+            isConnected: true,
+            isConnecting: false,
+            error: null,
           }));
           // Re-subscribe to device if we were subscribed before
           if (currentDeviceId.current && isSubscribed.current) {
@@ -138,48 +144,87 @@ export const useDeviceSocket = (deviceId?: string, options: UseDeviceSocketOptio
           }
         },
         onProgress: (receivedDeviceId, progress) => {
-          if (!currentDeviceId.current || receivedDeviceId === currentDeviceId.current) {
-            setState(prev => ({ ...prev, progress }));
+          if (
+            !currentDeviceId.current ||
+            receivedDeviceId === currentDeviceId.current
+          ) {
+            setState((prev) => ({ ...prev, progress }));
           }
         },
         onError: (receivedDeviceId, deviceError) => {
-          if (!currentDeviceId.current || receivedDeviceId === currentDeviceId.current) {
-            setState(prev => ({ ...prev, deviceError }));
+          if (
+            !currentDeviceId.current ||
+            receivedDeviceId === currentDeviceId.current
+          ) {
+            setState((prev) => ({ ...prev, deviceError }));
           }
         },
         onStatus: (receivedDeviceId, status) => {
-          if (!currentDeviceId.current || receivedDeviceId === currentDeviceId.current) {
-            setState(prev => ({ ...prev, status }));
+          if (
+            !currentDeviceId.current ||
+            receivedDeviceId === currentDeviceId.current
+          ) {
+            setState((prev) => ({ ...prev, status }));
           }
         },
         onInfusionConfirmed: (receivedDeviceId, infusionConfirmation) => {
-          console.log('🔔 Socket received infusion confirmation:', { receivedDeviceId, infusionConfirmation, targetDeviceId: currentDeviceId.current });
-          if (!currentDeviceId.current || receivedDeviceId === currentDeviceId.current) {
-            setState(prev => ({ ...prev, infusionConfirmation }));
+          console.log("🔔 Socket received infusion confirmation:", {
+            receivedDeviceId,
+            infusionConfirmation,
+            targetDeviceId: currentDeviceId.current,
+          });
+          if (
+            !currentDeviceId.current ||
+            receivedDeviceId === currentDeviceId.current
+          ) {
+            setState((prev) => ({ ...prev, infusionConfirmation }));
           }
         },
         onInfusionCompleted: (receivedDeviceId, infusionCompletion) => {
-          console.log('🏁 Socket received infusion completion:', { receivedDeviceId, infusionCompletion, targetDeviceId: currentDeviceId.current });
-          if (!currentDeviceId.current || receivedDeviceId === currentDeviceId.current) {
-            setState(prev => ({ ...prev, infusionCompletion }));
+          console.log("🏁 Socket received infusion completion:", {
+            receivedDeviceId,
+            infusionCompletion,
+            targetDeviceId: currentDeviceId.current,
+          });
+          if (
+            !currentDeviceId.current ||
+            receivedDeviceId === currentDeviceId.current
+          ) {
+            setState((prev) => ({ ...prev, infusionCompletion }));
           }
         },
         onNotification: (receivedDeviceId, notification) => {
-          console.log('🔔 Socket received notification:', { receivedDeviceId, notification, targetDeviceId: currentDeviceId.current });
-          if (!currentDeviceId.current || receivedDeviceId === currentDeviceId.current) {
-            setState(prev => ({
+          console.log("🔔 Socket received notification:", {
+            receivedDeviceId,
+            notification,
+            targetDeviceId: currentDeviceId.current,
+          });
+          if (
+            !currentDeviceId.current ||
+            receivedDeviceId === currentDeviceId.current
+          ) {
+            setState((prev) => ({
               ...prev,
               notifications: [notification, ...prev.notifications].slice(0, 20), // Keep last 20 notifications
-              activeNotification: notification.showModal ? notification : prev.activeNotification
+              activeNotification: notification.showModal
+                ? notification
+                : prev.activeNotification,
             }));
           }
         },
         onNotifications: (receivedDeviceId, notifications) => {
-          console.log('📬 Socket received notifications:', { receivedDeviceId, notifications, targetDeviceId: currentDeviceId.current });
-          if (!currentDeviceId.current || receivedDeviceId === currentDeviceId.current) {
-            setState(prev => ({ 
-              ...prev, 
-              notifications: notifications.slice(0, 20) // Keep last 20 notifications
+          console.log("📬 Socket received notifications:", {
+            receivedDeviceId,
+            notifications,
+            targetDeviceId: currentDeviceId.current,
+          });
+          if (
+            !currentDeviceId.current ||
+            receivedDeviceId === currentDeviceId.current
+          ) {
+            setState((prev) => ({
+              ...prev,
+              notifications: notifications.slice(0, 20), // Keep last 20 notifications
             }));
           }
         },
@@ -187,11 +232,12 @@ export const useDeviceSocket = (deviceId?: string, options: UseDeviceSocketOptio
 
       await socketService.connect(callbacks);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to connect';
-      setState(prev => ({ 
-        ...prev, 
-        isConnecting: false, 
-        error: errorMessage 
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to connect";
+      setState((prev) => ({
+        ...prev,
+        isConnecting: false,
+        error: errorMessage,
       }));
     }
   }, [state.isConnected, state.isConnecting]); // Removed deviceId from dependencies
@@ -199,7 +245,7 @@ export const useDeviceSocket = (deviceId?: string, options: UseDeviceSocketOptio
   // Subscribe to device data
   const subscribeToDevice = useCallback((targetDeviceId: string) => {
     if (!socketService.getConnectionStatus()) {
-      throw new Error('Socket not connected');
+      throw new Error("Socket not connected");
     }
 
     socketService.subscribeToDevice(targetDeviceId);
@@ -215,13 +261,19 @@ export const useDeviceSocket = (deviceId?: string, options: UseDeviceSocketOptio
   }, []);
 
   // Wait for device confirmation
-  const waitForDeviceConfirmation = useCallback(async (targetDeviceId: string, timeout = 30000) => {
-    if (!socketService.getConnectionStatus()) {
-      throw new Error('Socket not connected');
-    }
+  const waitForDeviceConfirmation = useCallback(
+    async (targetDeviceId: string, timeout = 30000) => {
+      if (!socketService.getConnectionStatus()) {
+        throw new Error("Socket not connected");
+      }
 
-    return await socketService.waitForDeviceConfirmation(targetDeviceId, timeout);
-  }, []);
+      return await socketService.waitForDeviceConfirmation(
+        targetDeviceId,
+        timeout
+      );
+    },
+    []
+  );
 
   // Disconnect from Socket.IO server
   const disconnect = useCallback(() => {
@@ -243,10 +295,15 @@ export const useDeviceSocket = (deviceId?: string, options: UseDeviceSocketOptio
 
   // Auto-connect effect with better error handling (only if not already connected globally)
   useEffect(() => {
-    if (autoConnect && !state.isConnected && !state.isConnecting && !socketService.getConnectionStatus()) {
-      console.log('🔄 Auto-connecting to socket service...');
-      connect().catch(err => {
-        console.error('Auto-connect failed:', err);
+    if (
+      autoConnect &&
+      !state.isConnected &&
+      !state.isConnecting &&
+      !socketService.getConnectionStatus()
+    ) {
+      console.log("🔄 Auto-connecting to socket service...");
+      connect().catch((err) => {
+        console.error("Auto-connect failed:", err);
         // Don't automatically retry here, let the component handle retries
       });
     }
@@ -272,17 +329,40 @@ export const useDeviceSocket = (deviceId?: string, options: UseDeviceSocketOptio
   }, []); // Empty dependency array - only run on mount/unmount
 
   // Stable utility functions
-  const clearProgress = useCallback(() => setState(prev => ({ ...prev, progress: null })), []);
-  const clearError = useCallback(() => setState(prev => ({ ...prev, deviceError: null })), []);
-  const clearInfusionConfirmation = useCallback(() => setState(prev => ({ ...prev, infusionConfirmation: null })), []);
-  const clearInfusionCompletion = useCallback(() => setState(prev => ({ ...prev, infusionCompletion: null })), []);
-  const clearActiveNotification = useCallback(() => setState(prev => ({ ...prev, activeNotification: null })), []);
-  const dismissNotification = useCallback((notificationId: string) => 
-    setState(prev => ({ 
-      ...prev, 
-      notifications: prev.notifications.filter(n => n.id !== notificationId),
-      activeNotification: prev.activeNotification?.id === notificationId ? null : prev.activeNotification
-    })), []);
+  const clearProgress = useCallback(
+    () => setState((prev) => ({ ...prev, progress: null })),
+    []
+  );
+  const clearError = useCallback(
+    () => setState((prev) => ({ ...prev, deviceError: null })),
+    []
+  );
+  const clearInfusionConfirmation = useCallback(
+    () => setState((prev) => ({ ...prev, infusionConfirmation: null })),
+    []
+  );
+  const clearInfusionCompletion = useCallback(
+    () => setState((prev) => ({ ...prev, infusionCompletion: null })),
+    []
+  );
+  const clearActiveNotification = useCallback(
+    () => setState((prev) => ({ ...prev, activeNotification: null })),
+    []
+  );
+  const dismissNotification = useCallback(
+    (notificationId: string) =>
+      setState((prev) => ({
+        ...prev,
+        notifications: prev.notifications.filter(
+          (n) => n.id !== notificationId
+        ),
+        activeNotification:
+          prev.activeNotification?.id === notificationId
+            ? null
+            : prev.activeNotification,
+      })),
+    []
+  );
 
   return {
     // Connection state

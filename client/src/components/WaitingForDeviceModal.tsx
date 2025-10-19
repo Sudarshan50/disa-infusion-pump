@@ -1,5 +1,10 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import { useDeviceSocket } from "@/hooks/useDeviceSocket";
@@ -24,25 +29,27 @@ export const WaitingForDeviceModal = ({
   deviceId,
   onDeviceConfirmed,
 }: WaitingForDeviceModalProps) => {
-  const [status, setStatus] = useState<'waiting' | 'confirmed' | 'error'>('waiting');
-  const [error, setError] = useState<string>('');
-  const [connectionDetails, setConnectionDetails] = useState<string>('');
-  
-  const { 
-    isConnected, 
-    isConnecting, 
-    connectionError, 
+  const [status, setStatus] = useState<"waiting" | "confirmed" | "error">(
+    "waiting"
+  );
+  const [error, setError] = useState<string>("");
+  const [connectionDetails, setConnectionDetails] = useState<string>("");
+
+  const {
+    isConnected,
+    isConnecting,
+    connectionError,
     infusionConfirmation,
     connect,
     subscribeToDevice,
-    clearInfusionConfirmation
+    clearInfusionConfirmation,
   } = useDeviceSocket(deviceId, { autoConnect: false }); // Disable auto-connect to prevent conflicts
 
   useEffect(() => {
     if (!isOpen) {
-      setStatus('waiting');
-      setError('');
-      setConnectionDetails('');
+      setStatus("waiting");
+      setError("");
+      setConnectionDetails("");
       return;
     }
 
@@ -51,10 +58,10 @@ export const WaitingForDeviceModal = ({
 
     // Auto-connect if not connected
     if (!isConnected && !isConnecting) {
-      setConnectionDetails('Connecting to server...');
-      connect().catch(err => {
-        console.error('Connection failed:', err);
-        setStatus('error');
+      setConnectionDetails("Connecting to server...");
+      connect().catch((err) => {
+        console.error("Connection failed:", err);
+        setStatus("error");
         setError(`Failed to connect to server: ${err.message}`);
       });
     }
@@ -63,9 +70,11 @@ export const WaitingForDeviceModal = ({
   // Monitor connection status
   useEffect(() => {
     if (isConnected) {
-      setConnectionDetails(`Connected to server. Waiting for device ${deviceId}...`);
+      setConnectionDetails(
+        `Connected to server. Waiting for device ${deviceId}...`
+      );
     } else if (isConnecting) {
-      setConnectionDetails('Connecting to server...');
+      setConnectionDetails("Connecting to server...");
     } else if (connectionError) {
       setConnectionDetails(`Connection error: ${connectionError}`);
     }
@@ -73,52 +82,64 @@ export const WaitingForDeviceModal = ({
 
   // Listen for infusion confirmation from Socket.IO
   useEffect(() => {
-    if (infusionConfirmation && status === 'waiting') {
-      console.log('✅ Received infusion confirmation:', infusionConfirmation);
-      
+    if (infusionConfirmation && status === "waiting") {
+      console.log("✅ Received infusion confirmation:", infusionConfirmation);
+
       // Validate that this confirmation is for our device and has the required data
       if (infusionConfirmation.infusionId && infusionConfirmation.confirmed) {
-        setStatus('confirmed');
-        setConnectionDetails('Device confirmed! Processing...');
-        
+        setStatus("confirmed");
+        setConnectionDetails("Device confirmed! Processing...");
+
         setTimeout(() => {
           onDeviceConfirmed({
             deviceId,
             infusionId: infusionConfirmation.infusionId,
-            status: 'confirmed',
-            timestamp: infusionConfirmation.confirmedAt || new Date().toISOString(),
+            status: "confirmed",
+            timestamp:
+              infusionConfirmation.confirmedAt || new Date().toISOString(),
           });
-          
+
           // Refresh the page to get latest data
           window.location.reload();
         }, 1500);
       } else {
-        console.warn('⚠️ Received invalid infusion confirmation:', infusionConfirmation);
-        setConnectionDetails('Received invalid device response. Still waiting...');
+        console.warn(
+          "⚠️ Received invalid infusion confirmation:",
+          infusionConfirmation
+        );
+        setConnectionDetails(
+          "Received invalid device response. Still waiting..."
+        );
       }
     }
   }, [infusionConfirmation, status, deviceId, onDeviceConfirmed]);
 
   // Set up timeout for device response and subscribe to device
   useEffect(() => {
-    if (isOpen && isConnected && status === 'waiting') {
+    if (isOpen && isConnected && status === "waiting") {
       // Subscribe to device events
       try {
         subscribeToDevice(deviceId);
-        console.log(`📡 Subscribed to device ${deviceId} for infusion confirmation`);
-        setConnectionDetails(`Subscribed to device ${deviceId}. Waiting for confirmation...`);
+        console.log(
+          `📡 Subscribed to device ${deviceId} for infusion confirmation`
+        );
+        setConnectionDetails(
+          `Subscribed to device ${deviceId}. Waiting for confirmation...`
+        );
       } catch (err) {
-        console.error('Subscription failed:', err);
-        setStatus('error');
+        console.error("Subscription failed:", err);
+        setStatus("error");
         setError(`Failed to subscribe to device: ${err.message}`);
         return;
       }
-      
+
       // Set timeout for device response
       const timeoutId = setTimeout(() => {
-        if (status === 'waiting') {
-          setStatus('error');
-          setError('Device did not respond within 30 seconds. Please check the device connection and try again.');
+        if (status === "waiting") {
+          setStatus("error");
+          setError(
+            "Device did not respond within 30 seconds. Please check the device connection and try again."
+          );
         }
       }, 30000);
 
@@ -131,7 +152,7 @@ export const WaitingForDeviceModal = ({
   // Handle connection errors
   useEffect(() => {
     if (connectionError && !isConnected) {
-      setStatus('error');
+      setStatus("error");
       setError(`Connection error: ${connectionError}`);
     }
   }, [connectionError, isConnected]);
@@ -142,13 +163,13 @@ export const WaitingForDeviceModal = ({
   };
 
   const handleRetry = () => {
-    setStatus('waiting');
-    setError('');
-    setConnectionDetails('Retrying connection...');
+    setStatus("waiting");
+    setError("");
+    setConnectionDetails("Retrying connection...");
     if (!isConnected) {
-      connect().catch(err => {
-        console.error('Retry connection failed:', err);
-        setStatus('error');
+      connect().catch((err) => {
+        console.error("Retry connection failed:", err);
+        setStatus("error");
         setError(`Retry failed: ${err.message}`);
       });
     }
@@ -159,21 +180,23 @@ export const WaitingForDeviceModal = ({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-center">
-            {status === 'waiting' && 'Waiting for Device Response'}
-            {status === 'confirmed' && 'Device Confirmed!'}
-            {status === 'error' && 'Connection Error'}
+            {status === "waiting" && "Waiting for Device Response"}
+            {status === "confirmed" && "Device Confirmed!"}
+            {status === "error" && "Connection Error"}
           </DialogTitle>
         </DialogHeader>
-        
+
         <div className="flex flex-col items-center justify-center py-8 space-y-4">
-          {(status === 'waiting' || isConnecting) && (
+          {(status === "waiting" || isConnecting) && (
             <>
               <Loader2 className="h-12 w-12 animate-spin text-primary" />
               <p className="text-center text-muted-foreground">
-                {connectionDetails || `Waiting for device ${deviceId} to confirm the infusion...`}
+                {connectionDetails ||
+                  `Waiting for device ${deviceId} to confirm the infusion...`}
               </p>
               <p className="text-xs text-muted-foreground text-center">
-                Please ensure the device is connected and ready to receive commands.
+                Please ensure the device is connected and ready to receive
+                commands.
               </p>
               {isConnected && (
                 <div className="text-xs text-green-600 text-center">
@@ -182,8 +205,8 @@ export const WaitingForDeviceModal = ({
               )}
             </>
           )}
-          
-          {status === 'confirmed' && (
+
+          {status === "confirmed" && (
             <>
               <CheckCircle className="h-12 w-12 text-green-500" />
               <p className="text-center text-green-600 font-semibold">
@@ -191,8 +214,8 @@ export const WaitingForDeviceModal = ({
               </p>
             </>
           )}
-          
-          {status === 'error' && (
+
+          {status === "error" && (
             <>
               <XCircle className="h-12 w-12 text-destructive" />
               <p className="text-center text-destructive font-semibold">
@@ -204,22 +227,20 @@ export const WaitingForDeviceModal = ({
             </>
           )}
         </div>
-        
+
         <div className="flex justify-center space-x-3">
-          {(status === 'waiting' || isConnecting) && (
+          {(status === "waiting" || isConnecting) && (
             <Button variant="outline" onClick={handleCancel}>
               Cancel
             </Button>
           )}
-          
-          {status === 'error' && (
+
+          {status === "error" && (
             <>
               <Button variant="outline" onClick={handleCancel}>
                 Close
               </Button>
-              <Button onClick={handleRetry}>
-                Retry
-              </Button>
+              <Button onClick={handleRetry}>Retry</Button>
             </>
           )}
         </div>

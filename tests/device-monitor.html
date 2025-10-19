@@ -342,7 +342,7 @@
         // Update status badge
         const statusElement = document.getElementById(`status-${deviceId}`);
         if (statusElement) {
-          const statusValue = statusData.status || status || 'unknown';
+          const statusValue = statusData.status || status || "unknown";
           statusElement.textContent = statusValue.toUpperCase();
           statusElement.className = `status-badge status-${statusValue}`;
         }
@@ -354,9 +354,13 @@
         }
 
         // Update timestamp
-        const timestampElement = document.getElementById(`timestamp-${deviceId}`);
+        const timestampElement = document.getElementById(
+          `timestamp-${deviceId}`
+        );
         if (timestampElement) {
-          timestampElement.textContent = new Date(statusData.timestamp || Date.now()).toLocaleTimeString();
+          timestampElement.textContent = new Date(
+            statusData.timestamp || Date.now()
+          ).toLocaleTimeString();
         }
       }
 
@@ -384,9 +388,13 @@
           }
 
           // Update timestamp
-          const timestampElement = document.getElementById(`timestamp-${deviceId}`);
+          const timestampElement = document.getElementById(
+            `timestamp-${deviceId}`
+          );
           if (timestampElement) {
-            timestampElement.textContent = new Date(progress.timestamp || Date.now()).toLocaleTimeString();
+            timestampElement.textContent = new Date(
+              progress.timestamp || Date.now()
+            ).toLocaleTimeString();
           }
         } else {
           // No progress data
@@ -405,7 +413,9 @@
           createDeviceCard(deviceId);
         }
 
-        const errorSection = document.getElementById(`error-section-${deviceId}`);
+        const errorSection = document.getElementById(
+          `error-section-${deviceId}`
+        );
         if (!errorSection) return;
 
         if (error && error.type && error.message) {
@@ -447,7 +457,7 @@
       function updateInfusionConfirmation(data) {
         const { deviceId, confirmation } = data;
         console.log(`💉 Device ${deviceId} confirmed infusion:`, confirmation);
-        
+
         // You could add visual feedback here
         const card = document.getElementById(`device-${deviceId}`);
         if (card) {

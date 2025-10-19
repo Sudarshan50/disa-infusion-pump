@@ -37,18 +37,21 @@ This project has been refactored to use a simplified Socket.IO streaming archite
 ### Socket.IO Events
 
 **Client → Server:**
+
 - `subscribe:device` - Subscribe to device updates
 - `unsubscribe:device` - Unsubscribe from device updates
 
 **Server → Client:**
+
 - `device:progress` - Device progress updates
-- `device:error` - Device error notifications  
+- `device:error` - Device error notifications
 - `device:status` - Device status updates
 - `device:infusion:confirmed` - Infusion confirmation from device
 
 ### MQTT Topics
 
 **Device → Server:**
+
 - `devices/{deviceId}/progress` - Progress updates during infusion
 - `devices/{deviceId}/error` - Error notifications from device
 - `devices/{deviceId}/infusion` - Infusion confirmation from device
@@ -57,20 +60,23 @@ This project has been refactored to use a simplified Socket.IO streaming archite
 ## Testing
 
 ### Backend Testing
+
 1. Start the backend server
 2. Open `tests/device-monitor.html` in browser
 3. Subscribe to a device (e.g., PUMP_0001)
 
 ### MQTT Testing
+
 1. Configure MQTT credentials in environment variables
 2. Run the test simulator: `node tests/mqtt-test.js PUMP_0001`
 3. Use interactive commands:
    - `start` - Send infusion confirmation
-   - `progress` - Send progress update  
+   - `progress` - Send progress update
    - `error` - Send error message
    - `status` - Send status update
 
 ### Complete Flow Testing
+
 1. Start backend server
 2. Open frontend application
 3. Navigate to device wizard

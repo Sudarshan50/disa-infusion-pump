@@ -3,7 +3,7 @@
  * Handles warning sounds for device errors and notifications
  */
 
-export type SoundType = 'error' | 'warning' | 'info' | 'success';
+export type SoundType = "error" | "warning" | "info" | "success";
 
 interface ToneConfig {
   frequency: number;
@@ -29,9 +29,10 @@ class AudioService {
   private initializeAudioContext() {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      this.context = new (window.AudioContext || (window as any).webkitAudioContext)();
+      this.context = new (window.AudioContext ||
+        (window as any).webkitAudioContext)();
     } catch (error) {
-      console.warn('Web Audio API not supported:', error);
+      console.warn("Web Audio API not supported:", error);
       this.context = null;
     }
   }
@@ -39,12 +40,12 @@ class AudioService {
   /**
    * Generate and play a warning tone
    */
-  async playWarningSound(type: SoundType = 'warning') {
+  async playWarningSound(type: SoundType = "warning") {
     if (!this.isEnabled || !this.context) return;
 
     try {
       // Resume audio context if suspended (required by some browsers)
-      if (this.context.state === 'suspended') {
+      if (this.context.state === "suspended") {
         await this.context.resume();
       }
 
@@ -57,23 +58,32 @@ class AudioService {
 
       // Configure sound based on type
       const soundConfig = this.getSoundConfig(type);
-      
+
       // Set initial volume
       gainNode.gain.setValueAtTime(0, this.context.currentTime);
-      gainNode.gain.linearRampToValueAtTime(this.volume * soundConfig.volume, this.context.currentTime + 0.01);
+      gainNode.gain.linearRampToValueAtTime(
+        this.volume * soundConfig.volume,
+        this.context.currentTime + 0.01
+      );
 
       // Play the tone sequence
       let currentTime = this.context.currentTime;
-      
+
       for (const tone of soundConfig.tones) {
         oscillator.frequency.setValueAtTime(tone.frequency, currentTime);
-        oscillator.frequency.linearRampToValueAtTime(tone.frequency, currentTime + tone.duration);
+        oscillator.frequency.linearRampToValueAtTime(
+          tone.frequency,
+          currentTime + tone.duration
+        );
         currentTime += tone.duration;
-        
+
         if (tone.pause) {
           gainNode.gain.linearRampToValueAtTime(0, currentTime);
           currentTime += tone.pause;
-          gainNode.gain.linearRampToValueAtTime(this.volume * soundConfig.volume, currentTime);
+          gainNode.gain.linearRampToValueAtTime(
+            this.volume * soundConfig.volume,
+            currentTime
+          );
         }
       }
 
@@ -86,7 +96,7 @@ class AudioService {
 
       console.log(`🔊 Played ${type} notification sound`);
     } catch (error) {
-      console.error('Failed to play warning sound:', error);
+      console.error("Failed to play warning sound:", error);
     }
   }
 
@@ -101,20 +111,18 @@ class AudioService {
           { frequency: 800, duration: 0.2 },
           { frequency: 600, duration: 0.2, pause: 0.1 },
           { frequency: 800, duration: 0.2 },
-        ]
+        ],
       },
       warning: {
         volume: 0.6,
         tones: [
           { frequency: 600, duration: 0.3 },
           { frequency: 400, duration: 0.3, pause: 0.1 },
-        ]
+        ],
       },
       info: {
         volume: 0.4,
-        tones: [
-          { frequency: 500, duration: 0.2 },
-        ]
+        tones: [{ frequency: 500, duration: 0.2 }],
       },
       success: {
         volume: 0.5,
@@ -122,8 +130,8 @@ class AudioService {
           { frequency: 400, duration: 0.1 },
           { frequency: 500, duration: 0.1 },
           { frequency: 600, duration: 0.2 },
-        ]
-      }
+        ],
+      },
     };
 
     return configs[type] || configs.info;
@@ -132,14 +140,14 @@ class AudioService {
   /**
    * Play notification sound based on priority level
    */
-  async playNotificationSound(priority: 'critical' | 'warning' | 'info') {
+  async playNotificationSound(priority: "critical" | "warning" | "info") {
     const soundMap: Record<string, SoundType> = {
-      critical: 'error',
-      warning: 'warning',
-      info: 'info'
+      critical: "error",
+      warning: "warning",
+      info: "info",
     };
 
-    await this.playWarningSound(soundMap[priority] || 'info');
+    await this.playWarningSound(soundMap[priority] || "info");
   }
 
   /**
@@ -147,16 +155,16 @@ class AudioService {
    */
   setEnabled(enabled: boolean) {
     this.isEnabled = enabled;
-    localStorage.setItem('audioNotifications', enabled.toString());
+    localStorage.setItem("audioNotifications", enabled.toString());
   }
 
   /**
    * Get current sound enabled status
    */
   getEnabled(): boolean {
-    const stored = localStorage.getItem('audioNotifications');
+    const stored = localStorage.getItem("audioNotifications");
     if (stored !== null) {
-      this.isEnabled = stored === 'true';
+      this.isEnabled = stored === "true";
     }
     return this.isEnabled;
   }
@@ -166,14 +174,14 @@ class AudioService {
    */
   setVolume(volume: number) {
     this.volume = Math.max(0, Math.min(1, volume));
-    localStorage.setItem('audioVolume', this.volume.toString());
+    localStorage.setItem("audioVolume", this.volume.toString());
   }
 
   /**
    * Get current volume level
    */
   getVolume(): number {
-    const stored = localStorage.getItem('audioVolume');
+    const stored = localStorage.getItem("audioVolume");
     if (stored !== null) {
       this.volume = parseFloat(stored);
     }
@@ -184,7 +192,7 @@ class AudioService {
    * Test audio functionality
    */
   async testSound() {
-    await this.playWarningSound('warning');
+    await this.playWarningSound("warning");
   }
 }
 

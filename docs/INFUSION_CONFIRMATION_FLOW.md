@@ -16,6 +16,7 @@ The implementation creates a sophisticated flow that ensures proper device confi
 ## Frontend Components
 
 ### 1. WaitingForDeviceModal
+
 - **Purpose**: Shows a spinner while waiting for device confirmation
 - **Features**:
   - 30-second timeout for device response
@@ -24,6 +25,7 @@ The implementation creates a sophisticated flow that ensures proper device confi
   - Automatic progression after confirmation
 
 ### 2. Updated WizardStep3
+
 - **Integration**: Now includes the waiting modal
 - **Flow**: Start button → Modal → Device confirmation → Next step
 - **Props**: Added `onDeviceConfirmed` callback for handling confirmation
@@ -31,6 +33,7 @@ The implementation creates a sophisticated flow that ensures proper device confi
 ## Backend Implementation
 
 ### 1. MQTT Service Updates
+
 - **New Handler**: `handleInfusionConfirmation(deviceId, data)`
 - **Topic**: Listens to `devices/+/infusion` messages
 - **Validation**: Ensures `infusionId` is present in confirmation
@@ -38,7 +41,8 @@ The implementation creates a sophisticated flow that ensures proper device confi
 - **Notification**: Triggers Socket.IO event for real-time updates
 
 ### 2. Socket.IO Service Updates
-- **New Events**: 
+
+- **New Events**:
   - `subscribe:device:infusion` - Subscribe to device infusion events
   - `device:infusion:confirmed` - Emitted when device confirms
 - **New Methods**:
@@ -47,6 +51,7 @@ The implementation creates a sophisticated flow that ensures proper device confi
   - `notifyInfusionConfirmation()` - Broadcast confirmations
 
 ### 3. Device Controller
+
 - **Enhanced**: Start infusion endpoint creates infusion record
 - **Infusion ID**: Generates and sends MongoDB `_id` to device
 - **Patient Support**: Handles both patient details and skipped patient scenarios
@@ -54,6 +59,7 @@ The implementation creates a sophisticated flow that ensures proper device confi
 ## Device Communication Protocol
 
 ### 1. Command Flow (Backend → Device)
+
 ```json
 // Topic: devices/{deviceId}/commands
 {
@@ -74,6 +80,7 @@ The implementation creates a sophisticated flow that ensures proper device confi
 ```
 
 ### 2. Confirmation Flow (Device → Backend)
+
 ```json
 // Topic: devices/{deviceId}/infusion
 {
@@ -93,6 +100,7 @@ The implementation creates a sophisticated flow that ensures proper device confi
 ```
 
 ### 3. Progress Updates (Device → Backend)
+
 ```json
 // Topic: devices/{deviceId}/progress
 {
@@ -111,6 +119,7 @@ The implementation creates a sophisticated flow that ensures proper device confi
 ## API Endpoints
 
 ### 1. Start Infusion
+
 ```http
 POST /api/device/{deviceId}/start
 Content-Type: application/json
@@ -135,6 +144,7 @@ Content-Type: application/json
 ```
 
 ### 2. Get Infusion Details
+
 ```http
 POST /api/device/{deviceId}/infusion
 Content-Type: application/json
@@ -149,18 +159,21 @@ Content-Type: application/json
 ### 1. Socket.IO Events
 
 #### Client → Server
+
 - `subscribe:device:infusion` - Subscribe to infusion confirmations
 - `subscribe:device:progress` - Subscribe to progress updates
 - `subscribe:device:status` - Subscribe to status updates
 - `subscribe:device:errors` - Subscribe to error notifications
 
 #### Server → Client
+
 - `device:infusion:confirmed` - Device confirmed infusion start
 - `device:progress:update` - Real-time progress updates
 - `device:status:update` - Device status changes
 - `device:error` - Device error notifications
 
 ### 2. Redis Caching
+
 - **Infusion Confirmations**: `device:{deviceId}:infusion:confirmation` (10 min TTL)
 - **Progress Data**: `device:{deviceId}:progress` (5 sec TTL)
 - **Status Data**: `device:{deviceId}:status` (10 sec TTL)
@@ -169,6 +182,7 @@ Content-Type: application/json
 ## Testing Components
 
 ### 1. HTML Test Interface (`infusion-flow-test.html`)
+
 - **Purpose**: Complete frontend testing without React
 - **Features**:
   - Configure device and infusion parameters
@@ -178,6 +192,7 @@ Content-Type: application/json
   - Real-time progress monitoring
 
 ### 2. MQTT Device Simulator (`mqtt-device-simulator.js`)
+
 - **Purpose**: Simulate an infusion device
 - **Features**:
   - Responds to MQTT commands
@@ -187,6 +202,7 @@ Content-Type: application/json
   - Error simulation capabilities
 
 ### 3. ESP32 Arduino Code (`esp32-infusion-simulator.ino`)
+
 - **Purpose**: Hardware device simulation
 - **Features**:
   - Complete ESP32 implementation
@@ -198,17 +214,20 @@ Content-Type: application/json
 ## Error Handling
 
 ### 1. Frontend
+
 - **Timeout**: 30-second device response timeout
 - **Retry**: Option to retry failed connections
 - **User Feedback**: Clear error messages and status indicators
 
 ### 2. Backend
+
 - **Validation**: Input validation for all endpoints
 - **MQTT Errors**: Connection retry logic with exponential backoff
 - **Socket.IO**: Automatic reconnection and subscription management
 
 ### 3. Device Communication
-- **QoS Levels**: 
+
+- **QoS Levels**:
   - Commands and confirmations: QoS 1 (at least once)
   - Progress updates: QoS 0 (fire and forget)
 - **Message Validation**: JSON schema validation
@@ -217,16 +236,19 @@ Content-Type: application/json
 ## Security Considerations
 
 ### 1. MQTT Security
+
 - **TLS/SSL**: Encrypted connections (mqtts://)
 - **Authentication**: Username/password authentication
 - **Topic Security**: Device-specific topic restrictions
 
 ### 2. API Security
+
 - **Input Validation**: Comprehensive request validation
 - **Rate Limiting**: Prevent API abuse
 - **Authentication**: JWT-based authentication (implement as needed)
 
 ### 3. Real-time Communication
+
 - **CORS**: Properly configured CORS policies
 - **Socket Authentication**: Optional socket-level authentication
 - **Message Validation**: All incoming messages validated
@@ -234,6 +256,7 @@ Content-Type: application/json
 ## Production Deployment
 
 ### 1. Environment Variables
+
 ```bash
 # MQTT Configuration
 HIVEMQ_HOST=your-production-cluster.hivemq.cloud
@@ -249,12 +272,14 @@ SOCKETIO_CORS_ORIGIN=https://your-frontend-domain.com
 ```
 
 ### 2. Monitoring
+
 - **MQTT Connection Health**: Monitor broker connectivity
 - **Socket.IO Metrics**: Track active connections and subscriptions
 - **Device Health**: Monitor device heartbeats and response times
 - **API Performance**: Track endpoint response times and error rates
 
 ### 3. Scaling Considerations
+
 - **Redis Cluster**: For multiple backend instances
 - **Socket.IO Adapter**: Redis adapter for horizontal scaling
 - **Load Balancing**: Sticky sessions for Socket.IO connections
@@ -262,6 +287,7 @@ SOCKETIO_CORS_ORIGIN=https://your-frontend-domain.com
 ## Usage Example
 
 ### 1. Complete Flow Test
+
 ```bash
 # 1. Start the backend server
 npm start
@@ -283,6 +309,7 @@ open infusion-flow-test.html
 ```
 
 ### 2. Frontend Integration
+
 ```typescript
 // In your React component
 const [showWaitingModal, setShowWaitingModal] = useState(false);

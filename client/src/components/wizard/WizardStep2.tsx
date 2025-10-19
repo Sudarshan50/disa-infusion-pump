@@ -61,13 +61,14 @@ export const WizardStep2 = ({ onComplete, onBack }: WizardStep2Props) => {
       // Use Volume as basis: Time should equal Volume ÷ Flow Rate
       const expectedTime = Math.round((volume! / flowRate!) * 100) / 100;
       const timeDifference = Math.abs(time! - expectedTime);
-      
-      if (timeDifference > 0.01) { // Allow small rounding differences
+
+      if (timeDifference > 0.01) {
+        // Allow small rounding differences
         const correctedTime = expectedTime;
         setAutoCalcMessage(
           `⚠️ Values don't match! Volume ÷ Flow Rate = ${volume} ÷ ${flowRate} = ${correctedTime} min, but Time is ${time} min. Time should be ${correctedTime} min.`
         );
-        
+
         // Auto-correct the time to the calculated value
         setTime(correctedTime);
       } else {

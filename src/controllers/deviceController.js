@@ -60,7 +60,8 @@ device.createHealthCheck = asyncErrorHandler(async (req, res) => {
 
 device.start = asyncErrorHandler(async (req, res) => {
   const { deviceId } = req.params;
-  const { flowRateMlMin, plannedTimeMin, plannedVolumeMl, bolus, patient } = req.body;
+  const { flowRateMlMin, plannedTimeMin, plannedVolumeMl, bolus, patient } =
+    req.body;
 
   if (!deviceId) {
     throw new BadRequestError("Device ID is required");
@@ -78,14 +79,13 @@ device.start = asyncErrorHandler(async (req, res) => {
     throw new ForbiddenError("Invalid Device ID");
   } else if (deviceCheck.status === "running") {
     throw new ForbiddenError("Device is already running an infusion");
-  }else if (deviceCheck.status === "degraded") {
+  } else if (deviceCheck.status === "degraded") {
     throw new ForbiddenError("Device is offline");
   }
   try {
     //create a infusion record...
     let infusionRecord;
-    if(patient)
-    {
+    if (patient) {
       const newInfusion = new Infusion({
         device: deviceCheck._id,
         patient: patient,
@@ -101,9 +101,7 @@ device.start = asyncErrorHandler(async (req, res) => {
       });
       infusionRecord = await newInfusion.save();
       console.log("Created infusion with _id:", infusionRecord._id.toString());
-    }
-    else
-    {
+    } else {
       const newInfusion = new Infusion({
         device: deviceCheck._id,
         patientDetailSkipped: true,
@@ -118,13 +116,15 @@ device.start = asyncErrorHandler(async (req, res) => {
         },
       });
       infusionRecord = await newInfusion.save();
-      console.log("Created infusion (no patient) with _id:", infusionRecord._id.toString());
+      console.log(
+        "Created infusion (no patient) with _id:",
+        infusionRecord._id.toString()
+      );
     }
-    if(!infusionRecord)
-    {
+    if (!infusionRecord) {
       throw new Error("Failed to create infusion record");
     }
-    
+
     // Publish start command to device via MQTT
     mqttService.publishCommand(deviceId, "START_INFUSION", {
       flowRateMlMin,
@@ -134,7 +134,7 @@ device.start = asyncErrorHandler(async (req, res) => {
         enabled: bolus?.enabled || false,
         volumeMl: bolus?.volumeMl || 0,
       },
-      infusionId: infusionRecord._id.toString(),  // Use MongoDB _id
+      infusionId: infusionRecord._id.toString(), // Use MongoDB _id
     });
 
     // await Device.updateOne({ deviceId }, { status: "running" });
@@ -179,7 +179,10 @@ device.stop = asyncErrorHandler(async (req, res) => {
     });
 
     // Update device status
-    await Device.updateOne({ deviceId }, { status: "stopped", activeInfusion: null });
+    await Device.updateOne(
+      { deviceId },
+      { status: "stopped", activeInfusion: null }
+    );
 
     successResponse(
       res,
@@ -268,28 +271,28 @@ device.resume = asyncErrorHandler(async (req, res) => {
   }
 });
 
-
 device.getDetailsById = asyncErrorHandler(async (req, res) => {
   const { deviceId } = req.params;
   if (!deviceId) {
     throw new BadRequestError("Device ID is required");
   }
-  const deviceDetails = await Device.findOne({ deviceId }).populate('activeInfusion');
+  const deviceDetails = await Device.findOne({ deviceId }).populate(
+    "activeInfusion"
+  );
   if (!deviceDetails) {
     throw new ForbiddenError("Invalid Device ID");
   }
   successResponse(res, { device: deviceDetails }, "Device details", 200);
 });
 
-
 device.getInfusionDetails = asyncErrorHandler(async (req, res) => {
   const { deviceId } = req.params;
-  if(!deviceId){
+  if (!deviceId) {
     throw new BadRequestError("Device ID is required");
   }
-  const {infusionId} = req.body;
-  console.log("Infusion ID:",infusionId);
-  if(!infusionId){
+  const { infusionId } = req.body;
+  console.log("Infusion ID:", infusionId);
+  if (!infusionId) {
     throw new BadRequestError("Infusion ID is required");
   }
 
@@ -300,11 +303,13 @@ device.getInfusionDetails = asyncErrorHandler(async (req, res) => {
     throw new ForbiddenError("Invalid Device ID");
   }
   const infusionDetails = await Infusion.findById(infusionId);
-  if(!infusionDetails){
+  if (!infusionDetails) {
     throw new ForbiddenError("Infusion not found for this device");
   }
   if (infusionDetails.device.toString() !== deviceCheck._id.toString()) {
-    throw new ForbiddenError("Infusion does not belong to the specified device");
+    throw new ForbiddenError(
+      "Infusion does not belong to the specified device"
+    );
   }
   successResponse(res, infusionDetails, "Infusion details", 200);
 });
@@ -324,18 +329,24 @@ device.getCurrentInfusionStatus = asyncErrorHandler(async (req, res) => {
   try {
     // Get current infusion info from MQTT service
     const currentInfo = await mqttService.getCurrentInfusionInfo(deviceId);
-    
+
     // Get recent progress stream data
-    const progressStream = await mqttService.getDeviceStreamData(deviceId, 'progress', 10);
-    
+    const progressStream = await mqttService.getDeviceStreamData(
+      deviceId,
+      "progress",
+      10
+    );
+
     // Get device details from database
     const deviceDetails = await Device.findOne({ deviceId });
-    
+
     // If there's a current infusion, get the full infusion details
     let infusionDetails = null;
     if (currentInfo.currentInfusion && currentInfo.currentInfusion.infusionId) {
       try {
-        infusionDetails = await Infusion.findById(currentInfo.currentInfusion.infusionId);
+        infusionDetails = await Infusion.findById(
+          currentInfo.currentInfusion.infusionId
+        );
       } catch (error) {
         console.log("Could not find infusion in database:", error.message);
       }
@@ -364,7 +375,7 @@ device.getCurrentInfusionStatus = asyncErrorHandler(async (req, res) => {
 
 device.getDeviceStreamData = asyncErrorHandler(async (req, res) => {
   const { deviceId } = req.params;
-  const { type = 'progress', count = 50 } = req.query;
+  const { type = "progress", count = 50 } = req.query;
 
   if (!deviceId) {
     throw new BadRequestError("Device ID is required");
@@ -377,24 +388,35 @@ device.getDeviceStreamData = asyncErrorHandler(async (req, res) => {
   }
 
   // Validate stream type
-  const validTypes = ['progress', 'infusion', 'status', 'error'];
+  const validTypes = ["progress", "infusion", "status", "error"];
   if (!validTypes.includes(type)) {
-    throw new BadRequestError(`Invalid stream type. Must be one of: ${validTypes.join(', ')}`);
+    throw new BadRequestError(
+      `Invalid stream type. Must be one of: ${validTypes.join(", ")}`
+    );
   }
 
   try {
-    const streamData = await mqttService.getDeviceStreamData(deviceId, type, parseInt(count));
-    
-    successResponse(res, {
+    const streamData = await mqttService.getDeviceStreamData(
       deviceId,
-      streamType: type,
-      count: streamData.length,
-      data: streamData,
-    }, `${type} stream data retrieved`, 200);
+      type,
+      parseInt(count)
+    );
+
+    successResponse(
+      res,
+      {
+        deviceId,
+        streamType: type,
+        count: streamData.length,
+        data: streamData,
+      },
+      `${type} stream data retrieved`,
+      200
+    );
   } catch (error) {
     console.error("Error getting device stream data:", error);
     throw new Error("Failed to retrieve device stream data");
   }
 });
 
-export default device;  
+export default device;

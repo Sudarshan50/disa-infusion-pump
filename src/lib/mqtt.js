@@ -77,11 +77,11 @@ class MQTTService {
     if (!this.isConnected) return;
 
     const topics = [
-      "devices/+/progress", 
-      "devices/+/error", 
+      "devices/+/progress",
+      "devices/+/error",
       "devices/+/status",
       "devices/+/infusion",
-      "devices/+/completion"  // Added completion topic
+      "devices/+/completion", // Added completion topic
     ];
 
     topics.forEach((topic) => {
@@ -101,9 +101,11 @@ class MQTTService {
       const topicParts = topic.split("/");
       const deviceId = topicParts[1];
       const messageType = topicParts[2];
-      
-      console.log(`📥 MQTT Message received - Topic: ${topic}, Device: ${deviceId}, Type: ${messageType}`);
-      
+
+      console.log(
+        `📥 MQTT Message received - Topic: ${topic}, Device: ${deviceId}, Type: ${messageType}`
+      );
+
       switch (messageType) {
         case "progress":
           await this.handleDeviceProgress(deviceId, data);
@@ -118,7 +120,9 @@ class MQTTService {
           await this.handleInfusionCompletion(deviceId, data);
           break;
         default:
-          console.log(`⚠️ Unhandled message type: ${messageType} for device ${deviceId}`);
+          console.log(
+            `⚠️ Unhandled message type: ${messageType} for device ${deviceId}`
+          );
       }
     } catch (error) {
       console.error("Error processing MQTT message:", error);
@@ -153,9 +157,9 @@ class MQTTService {
       deviceId,
       errorId: `error_${deviceId}_${Date.now()}`,
       timestamp: new Date().toISOString(),
-      severity: data.severity || 'high', // high, medium, low
-      type: data.type || 'device_error',
-      message: data.message || 'Unknown device error',
+      severity: data.severity || "high", // high, medium, low
+      type: data.type || "device_error",
+      message: data.message || "Unknown device error",
       details: data.details || {},
       resolved: false,
       ...data,
@@ -167,31 +171,38 @@ class MQTTService {
       // Cache error in Redis for 5 minutes (300 seconds)
       const redisKey = `device_error:${deviceId}:${errorData.errorId}`;
       await redisClient.setEx(redisKey, 300, JSON.stringify(errorData));
-      
+
       // Also add to device error list for notifications
       const deviceErrorsKey = `device_errors:${deviceId}`;
       await redisClient.lPush(deviceErrorsKey, JSON.stringify(errorData));
       await redisClient.expire(deviceErrorsKey, 300); // 5 minutes
-      
+
       console.log(`✅ Error cached in Redis with key: ${redisKey}`);
-      
+
       // Add error to notification stream
       const notificationData = {
         id: errorData.errorId,
-        type: 'error',
-        priority: errorData.severity === 'high' ? 'critical' : 
-                 errorData.severity === 'medium' ? 'warning' : 'info',
+        type: "error",
+        priority:
+          errorData.severity === "high"
+            ? "critical"
+            : errorData.severity === "medium"
+              ? "warning"
+              : "info",
         title: `Device Error: ${errorData.type}`,
         message: errorData.message,
         timestamp: errorData.timestamp,
         deviceId: deviceId,
-        data: errorData
+        data: errorData,
       };
-      
+
       // Cache notification
       const notificationKey = `notification:${deviceId}:${errorData.errorId}`;
-      await redisClient.setEx(notificationKey, 300, JSON.stringify(notificationData));
-      
+      await redisClient.setEx(
+        notificationKey,
+        300,
+        JSON.stringify(notificationData)
+      );
     } catch (redisError) {
       console.error(`❌ Failed to cache error in Redis:`, redisError);
     }
@@ -203,16 +214,19 @@ class MQTTService {
   }
 
   async handleInfusionConfirmation(deviceId, data) {
-    console.log(`💉 Processing infusion confirmation for device ${deviceId}:`, data);
-    
+    console.log(
+      `💉 Processing infusion confirmation for device ${deviceId}:`,
+      data
+    );
+
     // Validate the confirmation has required fields
     if (!data.infusionId) {
-      console.error('❌ Invalid confirmation - missing infusionId:', data);
+      console.error("❌ Invalid confirmation - missing infusionId:", data);
       return;
     }
 
     if (!data.confirmed) {
-      console.warn('⚠️ Device did not confirm infusion:', data);
+      console.warn("⚠️ Device did not confirm infusion:", data);
       return;
     }
 
@@ -220,7 +234,7 @@ class MQTTService {
       deviceId,
       infusionId: data.infusionId,
       confirmed: data.confirmed,
-      confirmedAt: data.confirmedAt
+      confirmedAt: data.confirmedAt,
     });
 
     // Stream confirmation to Socket.IO clients (now async)
@@ -228,8 +242,11 @@ class MQTTService {
   }
 
   async handleInfusionCompletion(deviceId, data) {
-    console.log(`🏁 Processing infusion completion for device ${deviceId}:`, data);
-    
+    console.log(
+      `🏁 Processing infusion completion for device ${deviceId}:`,
+      data
+    );
+
     // Validate the completion has required fields
     if (!data.completed) {
       console.warn('⚠️ Device completion status is not "completed":', data);
@@ -240,7 +257,7 @@ class MQTTService {
       deviceId,
       completed: data.completed,
       completedAt: data.timestamp || data.completedAt,
-      summary: data.summary
+      summary: data.summary,
     });
 
     // Stream completion to Socket.IO clients

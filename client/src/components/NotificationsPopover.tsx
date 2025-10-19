@@ -50,8 +50,8 @@ export const NotificationsPopover = ({
   const handleSoundToggle = (enabled: boolean) => {
     setSoundEnabled(enabled);
     audioService.setEnabled(enabled);
-    console.log(`🔊 Sound notifications ${enabled ? 'enabled' : 'disabled'}`);
-    
+    console.log(`🔊 Sound notifications ${enabled ? "enabled" : "disabled"}`);
+
     // Play test sound when enabling
     if (enabled) {
       audioService.testSound();
@@ -92,9 +92,9 @@ export const NotificationsPopover = ({
               />
             </div>
           </div>
-          
+
           <Separator />
-          
+
           {notifications.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">
               No notifications

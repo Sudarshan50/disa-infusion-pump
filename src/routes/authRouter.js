@@ -6,6 +6,10 @@ const authRouter = e.Router();
 
 authRouter.post("/create", auth.createUser);
 authRouter.post("/login", auth.login);
-authRouter.patch('/update',authorizeRoles("admin", "attendee"), auth.updateUser);
+authRouter.patch(
+  "/update",
+  authorizeRoles("admin", "attendee"),
+  auth.updateUser
+);
 
 export default authRouter;
