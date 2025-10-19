@@ -78,10 +78,11 @@ class MQTTService {
 
     const topics = [
       "devices/+/progress",
-      "devices/+/error",
+      "devices/+/error", 
       "devices/+/status",
       "devices/+/infusion",
       "devices/+/completion", // Added completion topic
+      "devices/+/actions", // Added manual device actions topic
     ];
 
     topics.forEach((topic) => {
@@ -118,6 +119,9 @@ class MQTTService {
           break;
         case "completion":
           await this.handleInfusionCompletion(deviceId, data);
+          break;
+        case "actions":
+          await this.handleDeviceAction(deviceId, data);
           break;
         default:
           console.log(
@@ -263,6 +267,102 @@ class MQTTService {
     // Stream completion to Socket.IO clients
     if (this.socketService) {
       await this.socketService.streamInfusionCompletion(deviceId, data);
+    }
+  }
+
+  async handleDeviceAction(deviceId, data) {
+    console.log(
+      `🎮 Processing manual device action for device ${deviceId}:`,
+      data
+    );
+
+    // Validate the action has required fields
+    if (!data.action || !data.source) {
+      console.warn('⚠️ Invalid device action - missing action or source:', data);
+      return;
+    }
+
+    const validActions = ['MANUAL_PAUSE', 'MANUAL_RESUME', 'MANUAL_STOP'];
+    if (!validActions.includes(data.action)) {
+      console.warn('⚠️ Unknown device action:', data.action);
+      return;
+    }
+
+    console.log(`✅ Valid device action - processing:`, {
+      deviceId,
+      action: data.action,
+      source: data.source,
+      infusionId: data.infusionId,
+      timestamp: data.timestamp,
+    });
+
+    // Update device status in database based on action
+    try {
+      const Device = (await import("../models/Device.js")).default;
+      
+      let newStatus = "idle";
+      switch (data.action) {
+        case 'MANUAL_PAUSE':
+          newStatus = "paused";
+          break;
+        case 'MANUAL_RESUME':
+          newStatus = "running";
+          break;
+        case 'MANUAL_STOP':
+          newStatus = "healthy"; // Device returns to healthy after manual stop
+          break;
+      }
+
+      await Device.updateOne(
+        { deviceId },
+        { 
+          status: newStatus,
+          lastAction: data.action,
+          lastActionAt: new Date(),
+        }
+      );
+
+      console.log(`✅ Updated device ${deviceId} status to '${newStatus}' due to ${data.action}`);
+
+      // If it's a manual stop, also update any active infusion
+      if (data.action === 'MANUAL_STOP' && data.infusionId) {
+        const Infusion = (await import("../models/Infusion.js")).default;
+        await Infusion.updateOne(
+          { _id: data.infusionId },
+          { 
+            status: "stopped",
+            stoppedAt: new Date(),
+            stoppedBy: "device_manual_action"
+          }
+        );
+        console.log(`✅ Updated infusion ${data.infusionId} status to 'stopped' due to manual action`);
+      }
+
+    } catch (dbError) {
+      console.error('❌ Failed to update database for device action:', dbError);
+    }
+
+    // Stream action to Socket.IO clients for real-time UI updates
+    if (this.socketService) {
+      try {
+        // Create a unified action event for the frontend
+        const actionEvent = {
+          deviceId,
+          action: data.action,
+          source: data.source,
+          infusionId: data.infusionId,
+          timestamp: data.timestamp,
+          reason: data.reason || 'manual_user_action'
+        };
+
+        // Emit to specific device listeners and general action listeners
+        this.socketService.io.emit(`device:${deviceId}:action`, actionEvent);
+        this.socketService.io.emit('device:action', actionEvent);
+        
+        console.log(`📡 Streamed device action to Socket.IO clients:`, actionEvent);
+      } catch (socketError) {
+        console.error('❌ Failed to stream device action to Socket.IO:', socketError);
+      }
     }
   }
 
