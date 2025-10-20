@@ -77,6 +77,7 @@ const int SCREEN_H = 320;
 #define MOTOR_STEP_PIN 32
 #define MOTOR_DIR_PIN  33
 #define MOTOR_EN_PIN   12
+#define BUBBLE_PIN     17  // Bubble detector on GPIO 17
 
 
 UIState ui = UI_SPLASH;
@@ -181,6 +182,16 @@ const uint32_t IDLE_MS = 60000;
 bool showCompletionModal = false;
 bool completionModalDrawn = false;  // Track if modal is already drawn to prevent flickering
 
+// Bubble detection state
+bool bubblePresent = false;
+bool showBubbleModal = false;
+bool bubbleModalDrawn = false;
+bool bubbleAckUntilClear = false;  // Track if bubble was acknowledged but not yet cleared
+bool wasRunningBeforeBubble = false;  // Track if pump was running before bubble pause
+bool bubbleErrorSent = false;  // State flag to prevent rapid MQTT error messages
+uint32_t lastBubbleCheck = 0;
+const uint32_t BUBBLE_CHECK_INTERVAL = 100;  // Check every 100ms for responsiveness
+
 // Running screen update control
 uint32_t lastRunningUpdate = 0;
 const uint32_t RUNNING_UPDATE_INTERVAL = 1000;  // 1 second
@@ -197,6 +208,17 @@ void drawButton(const Button& b) {
 
 bool inBtn(const Button& b, uint16_t x, uint16_t y) {
   return (x >= b.x && x <= (b.x + b.w) && y >= b.y && y <= (b.y + b.h));
+}
+
+String getISOTimestamp() {
+  // Simple timestamp for MQTT (millis-based)
+  unsigned long ms = millis();
+  unsigned long seconds = ms / 1000;
+  unsigned long minutes = seconds / 60;
+  unsigned long hours = minutes / 60;
+  
+  // Format as simple timestamp (device uptime)
+  return String(hours % 24) + ":" + String(minutes % 60) + ":" + String(seconds % 60) + "." + String(ms % 1000);
 }
 
 void drawField(const InputField& f) {
@@ -1001,6 +1023,9 @@ void drawProblemModal(const String& msg) {
 
 // Completion modal (green)
 Button completionOK;  // draw and hit-test
+
+// Bubble modal (red)
+Button bubbleOK;  // draw and hit-test
 void drawCompletionModal() {
   int w = SCREEN_W - 80, h = 140;
   int x = 40, y = SCREEN_H / 2 - h / 2;
@@ -1023,6 +1048,70 @@ void drawCompletionModal() {
 
   completionOK = { SCREEN_W / 2 - 50, y + h - 50, 100, 40, "OK", COL_BG, COL_TEXT, COL_TEXT };
   drawButton(completionOK);
+}
+
+// Bubble modal (critical red overlay)
+void drawBubbleModal() {
+  int w = SCREEN_W - 60, h = 160;
+  int x = 30, y = SCREEN_H / 2 - h / 2;
+  
+  // Draw prominent overlay to ensure modal stays on top (prevents slider interference)
+  tft.fillRect(x - 15, y - 15, w + 30, h + 30, 0x1082); // Darker, larger overlay for z-index
+  
+  // Draw the modal with prominent borders to ensure highest z-index
+  tft.fillRoundRect(x + 4, y + 4, w, h, 12, 0x0841); // Darker shadow
+  tft.fillRoundRect(x, y, w, h, 12, COL_ERR);
+  tft.drawRoundRect(x, y, w, h, 12, TFT_WHITE);
+  tft.drawRoundRect(x + 1, y + 1, w - 2, h - 2, 11, TFT_WHITE); // Double border
+  tft.drawRoundRect(x + 2, y + 2, w - 4, h - 4, 10, TFT_YELLOW); // Triple border for prominence
+
+  // Critical warning icon (exclamation in triangle)
+  int iconX = x + 20, iconY = y + 20;
+  tft.fillTriangle(iconX, iconY + 20, iconX + 10, iconY, iconX + 20, iconY + 20, TFT_YELLOW);
+  tft.drawTriangle(iconX, iconY + 20, iconX + 10, iconY, iconX + 20, iconY + 20, TFT_WHITE);
+  tft.setTextDatum(TC_DATUM);
+  tft.setTextColor(TFT_BLACK, TFT_YELLOW);
+  tft.setTextSize(2);
+  tft.drawString("!", iconX + 10, iconY + 6);
+
+  // Title
+  tft.setTextDatum(TL_DATUM);
+  tft.setTextColor(TFT_WHITE, COL_ERR);
+  tft.setTextSize(2);
+  tft.drawString("BUBBLE DETECTED!", x + 50, y + 20);
+
+  // Warning message
+  tft.setTextSize(1);
+  tft.drawString("Air bubble detected in IV line.", x + 20, y + 50);
+  tft.drawString("Infusion has been automatically paused.", x + 20, y + 65);
+  tft.drawString("Please clear the bubble and press OK to continue.", x + 20, y + 85);
+
+  // Status indicator with cleaner text
+  bool bubbleStillPresent = digitalRead(BUBBLE_PIN) == HIGH;
+  
+  if (bubbleStillPresent) {
+    // Show warning status when bubble still present
+    tft.setTextColor(TFT_YELLOW, COL_ERR);
+    tft.drawString("Status: BUBBLE STILL PRESENT", x + 20, y + 105);
+    tft.setTextColor(TFT_RED, COL_ERR);
+    tft.drawString("Please clear the air bubble to continue", x + 20, y + 120);
+    
+    // No button when bubble present - just text
+  } else {
+    // Show success status when bubble cleared
+    tft.setTextColor(TFT_GREEN, COL_ERR);
+    tft.drawString("Status: BUBBLE CLEARED", x + 20, y + 105);
+    tft.setTextColor(TFT_WHITE, COL_ERR);
+    // tft.drawString("Ready to resume infusion", x + 20, y + 120);
+    
+    // Show Resume button only when bubble is cleared
+    bubbleOK = { SCREEN_W / 2 - 50, y + h - 45, 100, 35, 
+                 "RESUME", 
+                 COL_OK, COL_TEXT, COL_TEXT };
+    drawButton(bubbleOK);
+  }
+  
+  bubbleModalDrawn = true;
 }
 
 // -------------------- Motor Control Functions ---------------------
@@ -1550,29 +1639,117 @@ void publishManualStop() {
   Serial.println("✅ Manual stop action published successfully!");
 }
 
-// -------------------- Bubble Poll ---------------------
-// void pollBubble() {
-//   bool nowHigh = (digitalRead(BUBBLE_PIN) == HIGH);  // HIGH = bubble
+void publishBubbleError(bool bubbleDetected) {
+  DynamicJsonDocument doc(512);
+  
+  // Use format matching error-simulator.js structure
+  doc["type"] = bubbleDetected ? "bubble_detected" : "bubble_cleared";
+  doc["severity"] = "high";  // High severity to trigger modal and error sound
+  doc["message"] = bubbleDetected ? "Air bubble detected in IV line - infusion automatically paused for patient safety" : "Bubble cleared - infusion ready to resume";
+  doc["deviceId"] = DEVICE_ID;
+  doc["timestamp"] = getISOTimestamp();
+  
+  // Add details object like error simulator
+  JsonObject details = doc.createNestedObject("details");
+  details["sensorPin"] = BUBBLE_PIN;
+  details["sensorValue"] = digitalRead(BUBBLE_PIN);
+  details["autoAction"] = bubbleDetected ? "PAUSED_INFUSION" : "READY_TO_RESUME";
+  details["pumpStatus"] = pump == PUMP_RUNNING ? "running" : pump == PUMP_PAUSED ? "paused" : "idle";
+  
+  if (currentInfusionId.length() > 0) {
+    details["infusionId"] = currentInfusionId;
+    details["wasRunningBeforeBubble"] = wasRunningBeforeBubble;
+  }
 
-//   if (nowHigh && !bubblePresent) {
-//     bubblePresent = true;
-//     if (!bubbleAckUntilClear) {
-//       drawBubbleModal();
-//       bubbleModalShown = true;
-//     }
-//   } else if (!nowHigh && bubblePresent) {
-//     bubblePresent = false;
-//     bubbleAckUntilClear = false;
-//     if (bubbleModalShown) {
-//       bubbleModalShown = false;
-//       if (ui == UI_HOME) renderHome();
-//       else if (ui == UI_MANUAL_INPUT) renderManualInput();
-//       else if (ui == UI_MANUAL_BOLUS) renderManualBolus();
-//       else if (ui == UI_CONFIRM) renderConfirm();
-//       else if (ui == UI_RUNNING) renderRunning();
-//     }
-//   }
-// }
+  String topic = "devices/" + String(DEVICE_ID) + "/error";
+  String message;
+  serializeJson(doc, message);
+
+  Serial.println(bubbleDetected ? "🚨 Publishing HIGH SEVERITY Bubble Error:" : "✅ Publishing Bubble Cleared Notification:");
+  Serial.println("   Topic: " + topic);
+  Serial.println("   Type: " + String(bubbleDetected ? "bubble_detected" : "bubble_cleared"));
+  Serial.println("   Severity: high (triggers modal + error sound)");
+  Serial.println("   Auto Action: " + String(bubbleDetected ? "PAUSED_INFUSION" : "READY_TO_RESUME"));
+  Serial.println("   Message: " + message);
+
+  mqttClient.publish(topic.c_str(), message.c_str(), true); // retained = true
+  Serial.println(bubbleDetected ? "🚨 HIGH severity bubble error published!" : "✅ Bubble cleared notification published!");
+}
+
+// -------------------- Bubble Detection ---------------------
+void pollBubble() {
+  // Only check bubbles during infusion (running or paused states)
+  if (pump == PUMP_IDLE || ui != UI_RUNNING) return;
+  
+  // Throttle bubble checking for performance
+  uint32_t now = millis();
+  if (now - lastBubbleCheck < BUBBLE_CHECK_INTERVAL) return;
+  lastBubbleCheck = now;
+  
+  bool nowHigh = (digitalRead(BUBBLE_PIN) == HIGH);  // HIGH = bubble detected
+
+  // Bubble detected (transition from no bubble to bubble)
+  if (nowHigh && !bubblePresent) {
+    Serial.println("");
+    Serial.println("🚨 BUBBLE DETECTED! Pausing infusion...");
+    Serial.println("   Sensor GPIO" + String(BUBBLE_PIN) + ": HIGH (air detected)");
+    
+    bubblePresent = true;
+    
+    // Auto-pause infusion if running
+    if (pump == PUMP_RUNNING) {
+      wasRunningBeforeBubble = true;
+      
+      // Pause motor immediately
+      infusionActive = false;
+      motorEnable(false);
+      
+      pump = PUMP_PAUSED;
+      pauseStartMs = millis();
+      
+      // Publish MQTT error only once per bubble detection event
+      if (!bubbleErrorSent) {
+        publishBubbleError(true);
+        bubbleErrorSent = true;  // Prevent rapid MQTT messages
+        Serial.println("📡 MQTT bubble error sent (state locked to prevent spam)");
+      }
+      
+      // Publish device status as paused due to bubble
+      publishDeviceStatus("paused");
+      
+      Serial.println("✅ Infusion automatically paused due to bubble detection");
+    } else {
+      wasRunningBeforeBubble = false;
+    }
+    
+    // Show bubble modal (overlay only, no full screen redraw)
+    if (!showBubbleModal) {
+      showBubbleModal = true;
+      bubbleModalDrawn = false;  // Only redraw modal, not entire screen
+      Serial.println("📱 Showing bubble detection modal (overlay mode)");
+    }
+  }
+  
+  // Bubble cleared (transition from bubble to no bubble)
+  else if (!nowHigh && bubblePresent) {
+    Serial.println("");
+    Serial.println("✅ BUBBLE CLEARED!");
+    Serial.println("   Sensor GPIO" + String(BUBBLE_PIN) + ": LOW (liquid detected)");
+    
+    bubblePresent = false;
+    bubbleErrorSent = false;  // Reset error state flag for next bubble detection
+    
+    // Publish bubble cleared notification (only once)
+    publishBubbleError(false);
+    Serial.println("📡 MQTT bubble cleared notification sent");
+    
+    // Update modal display to show bubble is cleared (OK button enabled)
+    if (showBubbleModal) {
+      bubbleModalDrawn = false;  // Force modal redraw only with updated button state
+      Serial.println("📱 Updating bubble modal - OK button now enabled (overlay update)");
+    }
+  }
+}
 
 // -------------------- Touch Handling ------------------
 bool getTouch(uint16_t& x, uint16_t& y) {
@@ -1865,6 +2042,69 @@ void handleCompletionModalTouch(uint16_t x, uint16_t y) {
   }
 }
 
+void handleBubbleModalTouch(uint16_t x, uint16_t y) {
+  // Check if bubble is cleared
+  bool bubbleStillPresent = digitalRead(BUBBLE_PIN) == HIGH;
+  
+  // Only process touch if bubble is cleared (button is visible)
+  if (!bubbleStillPresent && x >= bubbleOK.x && x <= bubbleOK.x + bubbleOK.w && y >= bubbleOK.y && y <= bubbleOK.y + bubbleOK.h) {
+    // Bubble cleared and user pressed RESUME button
+    Serial.println("✅ User pressed RESUME - bubble cleared, dismissing modal");
+    
+    showBubbleModal = false;
+    bubbleModalDrawn = false;
+    bubbleAckUntilClear = false;
+    bubbleErrorSent = false;  // Reset error state completely
+    
+    // Resume infusion if it was running before bubble detection
+    if (wasRunningBeforeBubble && pump == PUMP_PAUSED) {
+      Serial.println("▶️ Resuming infusion after bubble clearance...");
+      
+      // Resume motor
+      if (totalSteps > 0) {
+        motorEnable(true);
+        infusionActive = true;
+        lastStepTime = micros();
+      }
+      
+      pump = PUMP_RUNNING;
+      pausedAccumMs += (millis() - pauseStartMs);
+      pauseStartMs = 0;
+      
+      // Publish manual resume action (bubble cleared resume)
+      publishManualResume();
+      
+      publishDeviceStatus("running");
+      
+      Serial.println("✅ Infusion resumed successfully after bubble clearance");
+    }
+    
+    wasRunningBeforeBubble = false;
+    
+    // Redraw the running screen to restore background after modal dismissal
+    if (ui == UI_RUNNING) {
+      renderRunning();
+      Serial.println("🖥️ Running screen redrawn after bubble modal dismissal");
+    }
+  } else if (bubbleStillPresent) {
+    // Bubble still present - user touched modal but can't proceed
+    Serial.println("⚠️ Touch detected but bubble still present - showing visual feedback");
+    
+    // Brief visual feedback to indicate bubble must be cleared first
+    Serial.println("💬 Showing 'Clear bubble first!' message to user");
+    
+    // Show temporary message at bottom of modal
+    tft.setTextDatum(TC_DATUM);
+    tft.setTextColor(TFT_RED, COL_ERR);
+    tft.setTextSize(1);
+    tft.drawString("Clear bubble first!", SCREEN_W / 2, SCREEN_H / 2 + 60);
+    delay(1500);
+    
+    // Redraw modal to clear the message
+    bubbleModalDrawn = false;
+  }
+}
+
 void pollTouch() {
   uint16_t x, y;
   if (!getTouch(x, y)) return;
@@ -1888,11 +2128,11 @@ void pollTouch() {
     return;
   }
 
-  // if (bubblePresent && !bubbleAckUntilClear) {
-  //   Serial.println("Bubble modal active");
-  //   handleBubbleModalTouch(x, y);
-  //   return;
-  // }
+  if (showBubbleModal) {
+    Serial.println("Bubble modal active");
+    handleBubbleModalTouch(x, y);
+    return;
+  }
 
   switch (ui) {
     case UI_HOME:
@@ -2094,10 +2334,12 @@ void setup() {
   Serial.println("Display initialized successfully!");
   Serial.println("");
 
-  // Serial.println("Configuring bubble detector...");
-  // pinMode(BUBBLE_PIN, INPUT_PULLUP);
-  // Serial.println("Bubble detector configured on pin " + String(BUBBLE_PIN));
-  // Serial.println("");
+  Serial.println("Configuring bubble detector...");
+  pinMode(BUBBLE_PIN, INPUT_PULLUP);  // NPN open-collector expects pull-up
+  Serial.println("Bubble detector configured on GPIO" + String(BUBBLE_PIN));
+  Serial.println("  HIGH = Bubble detected (air)");
+  Serial.println("  LOW  = Liquid present (normal)");
+  Serial.println("");
 
   Serial.println("Configuring stepper motor control...");
   pinMode(MOTOR_STEP_PIN, OUTPUT);
@@ -2201,8 +2443,8 @@ void loop() {
     uint32_t now = millis();
     if (now - lastRunningUpdate >= RUNNING_UPDATE_INTERVAL) {
       lastRunningUpdate = now;
-      // Only update progress if completion modal is not shown
-      if (!showCompletionModal) {
+      // Only update progress if no modals are shown (prevents overlap issues)
+      if (!showCompletionModal && !showBubbleModal) {
         updateRunningProgress();
         // Publish progress updates to MQTT (similar to temp.js)
         publishProgressUpdate();
@@ -2226,8 +2468,15 @@ void loop() {
     }
   }
 
+  // Draw modals AFTER all UI updates to ensure highest z-index (prevents overlap)
+  if (showBubbleModal && !bubbleModalDrawn) {
+    drawBubbleModal();
+    bubbleModalDrawn = true;
+    Serial.println("📱 Bubble modal overlay drawn with highest z-index");
+  }
+
   pollTouch();
-  // pollBubble();
+  pollBubble();
   
   // 🚨 CRITICAL: Additional MQTT loop call to ensure message processing
   if (mqttClient.connected()) {
