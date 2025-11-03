@@ -137,11 +137,37 @@ const float STEPS_PER_MM   = STEPS_PER_REV / LEAD_PITCH;
 const float CALIBRATION_FACTOR = 0.245;
 const float STEPS_PER_ML   = ((STROKE_LENGTH * STEPS_PER_MM) / SYRINGE_VOLUME) * CALIBRATION_FACTOR;
 
+// Bolus speed constants (based on motor testing)
+const float BOLUS_STEPS_PER_SEC = 120.0;  // Optimal tested speed
+const float BOLUS_STEP_DELAY_MICROS = 1000000.0 / BOLUS_STEPS_PER_SEC;  // ~1428.6μs
+
+// Backlash compensation - mechanical play in syringe plunger/piston
+// This compensates for the gap when changing direction
+const long BACKLASH_STEPS = 350;  // Extra steps to take up mechanical play (adjust based on testing)
+
+// Helper function to calculate bolus timing
+float calculateBolusDeliveryTime(float volumeMl) {
+  if (volumeMl <= 0) return 0;
+  long steps = volumeMl * STEPS_PER_ML;
+  return (float)steps / BOLUS_STEPS_PER_SEC;  // seconds
+}
+
 long totalSteps = 0;
 unsigned long stepDelay = 0;
 unsigned long lastStepTime = 0;
 bool infusionActive = false;
 bool infusionCompleted = false;
+
+// Bolus delivery tracking
+bool isDeliveringBolus = false;
+long currentBolusSteps = 0;
+long totalBolusSteps = 0;
+float currentBolusVolume = 0;
+
+// Recenter tracking variables
+long totalStepsDelivered = 0;  // Track total forward steps for recentering
+bool needsRecenter = false;     // Flag to indicate recenter is needed
+bool isRecentering = false;     // Flag to indicate recentering in progress
 
 const int STATUS_H = 26;
 
@@ -679,6 +705,14 @@ void renderConfirm() {
     tft.setTextColor(COL_TEXT, COL_CARD);
     float percentage = (pendingData.bolus_ml / max(0.001f, pendingData.volume_ml)) * 100;
     tft.drawString(String(percentage, 1) + "%", col2X, y2 + 12);
+    y2 += lh;
+
+    // Show expected bolus delivery time
+    tft.setTextColor(COL_MUTED, COL_CARD);
+    tft.drawString("Delivery time:", col2X, y2);
+    tft.setTextColor(COL_TEXT, COL_CARD);
+    float bolusTime = calculateBolusDeliveryTime(pendingData.bolus_ml);
+    tft.drawString(String(bolusTime, 1) + " sec", col2X, y2 + 12);
   } else {
     tft.setTextColor(COL_MUTED, COL_CARD);
     tft.drawString("No bolus configured", col2X, y2);
@@ -733,9 +767,22 @@ void renderRunning() {
   tft.fillCircle(cx, cy, 10, (pump == PUMP_RUNNING && blink) ? COL_OK : 0x4208);
   tft.drawCircle(cx, cy, 10, COL_TEXT);
 
-  if (pump == PUMP_RUNNING) drawButton(btnPause);
-  else if (pump == PUMP_PAUSED) drawButton(btnResume);
-  if (activeData.bolusEnabled) drawButton(btnBolus);
+  // Show bolus delivery status if it was delivered at start
+  if (activeData.bolusEnabled) {
+    tft.setTextDatum(TC_DATUM);
+    tft.setTextColor(COL_OK, COL_BG);
+    tft.setTextSize(1);
+    String bolusStatus = "✓ Bolus delivered: " + String(activeData.bolus_ml, 1) + "mL (at start)";
+    tft.drawString(bolusStatus, SCREEN_W / 2, SCREEN_H - 100);
+  }
+
+  // Control buttons - no bolus button (delivered at start)
+  if (pump == PUMP_RUNNING) {
+    drawButton(btnPause);
+  } else if (pump == PUMP_PAUSED) {
+    drawButton(btnResume);
+  }
+  
   drawButton(btnStop);
 }
 
@@ -795,6 +842,9 @@ void startMotor() {
   infusionActive = true;
   lastStepTime = micros();
   
+  // Mark that recenter will be needed after this infusion
+  needsRecenter = true;
+  
   Serial.println("========== MOTOR STARTED ==========");
   Serial.printf("Initial Total Steps: %ld\n", totalSteps);
   Serial.printf("Target Volume: %.2f mL\n", activeData.volume_ml);
@@ -834,6 +884,7 @@ void runMotorStep() {
     digitalWrite(MOTOR_STEP_PIN, LOW);
     
     totalSteps--;
+    totalStepsDelivered++;  // Track steps for recenter
     
     // Enhanced debug output with multiple frequencies
     static long lastDebugStep = -1;
@@ -841,6 +892,12 @@ void runMotorStep() {
     static uint32_t lastTimeLog = 0;
     
     stepCounter++;
+    
+    // Debug: Log totalStepsDelivered every 100 steps
+    if (totalStepsDelivered % 100 == 0) {
+      Serial.printf("DEBUG: totalStepsDelivered = %ld (%.2f mL)\n", 
+                    totalStepsDelivered, totalStepsDelivered / STEPS_PER_ML);
+    }
     
     // Log every 25 steps (more frequent) OR every 5 seconds OR completion
     bool shouldLog = false;
@@ -880,6 +937,8 @@ void runMotorStep() {
       
       Serial.println("========== INFUSION COMPLETED ==========");
       Serial.printf("Total Steps Executed: %ld\n", stepCounter);
+      Serial.printf("Total Steps Delivered (for recenter): %ld\n", totalStepsDelivered);
+      Serial.printf("Expected steps for %.2f mL: %ld\n", finalDelivered, (long)(finalDelivered * STEPS_PER_ML));
       Serial.printf("Volume Delivered: %.2f mL\n", finalDelivered);
       Serial.printf("Total Time: %.1f seconds (%.2f minutes)\n", totalTime, totalTime/60.0);
       Serial.printf("Average Rate: %.1f mL/min\n", avgRate);
@@ -888,25 +947,256 @@ void runMotorStep() {
   }
 }
 
-void deliverBolus(float volume_ml) {
+void deliverBolusAtStart(float volume_ml) {
   if (volume_ml <= 0) return;
   
-  long bolusSteps = volume_ml * STEPS_PER_ML;
-  Serial.printf("Motor: Delivering bolus %.2f mL (%ld steps)\n", volume_ml, bolusSteps);
+  Serial.println("========== BOLUS AT START ==========");
+  Serial.printf("Delivering preset bolus: %.2f mL\n", volume_ml);
+  Serial.printf("Total infusion volume: %.2f mL\n", activeData.volume_ml);
+  Serial.printf("After bolus, remaining: %.2f mL\n", activeData.volume_ml - volume_ml);
   
+  long bolusSteps = volume_ml * STEPS_PER_ML;
+  Serial.printf("Bolus steps required: %ld\n", bolusSteps);
+  
+  // Calculate expected delivery time
+  float expectedDeliveryTime = calculateBolusDeliveryTime(volume_ml);
+  Serial.printf("Expected delivery time: %.1f seconds\n", expectedDeliveryTime);
+  
+  // Set bolus delivery state
+  isDeliveringBolus = true;
+  currentBolusSteps = 0;
+  totalBolusSteps = bolusSteps;
+  currentBolusVolume = volume_ml;
+  
+  // Show running screen with bolus indicator
+  gotoState(UI_RUNNING);
+  
+  // Enable motor and set direction
   motorEnable(true);
   digitalWrite(MOTOR_DIR_PIN, HIGH);  // Forward direction
   
-  // Deliver bolus at fast rate (500μs per step = ~1000 steps/sec)
+  Serial.println("Delivering bolus at optimal motor speed...");
+  unsigned long bolusStartTime = millis();
+  
+  // Use tested optimal speed constants
+  int stepDelayInt = (int)(BOLUS_STEP_DELAY_MICROS - 5);  // Subtract 5μs for HIGH pulse
+  
+  Serial.printf("Bolus speed: %.1f steps/sec (%.1f μs total delay)\n", BOLUS_STEPS_PER_SEC, BOLUS_STEP_DELAY_MICROS);
+  
   for (long i = 0; i < bolusSteps; i++) {
     digitalWrite(MOTOR_STEP_PIN, HIGH);
-    delayMicroseconds(10);
+    delayMicroseconds(5);  // 5μs HIGH pulse (same as your test)
     digitalWrite(MOTOR_STEP_PIN, LOW);
-    delayMicroseconds(500);
+    delayMicroseconds(stepDelayInt);  // Remaining delay for LOW phase
+    
+    // Track steps delivered for recenter
+    totalStepsDelivered++;
+    currentBolusSteps++;
+    
+    // Update screen every 50 steps
+    if (i % 50 == 0) {
+      updateRunningProgress();
+    }
+    
+    // Progress feedback every 200 steps
+    if (i % 200 == 0) {
+      float delivered = (float)i / STEPS_PER_ML;
+      Serial.printf("Bolus progress: %.1f/%.1f mL (%.0f%%)\n", 
+                    delivered, volume_ml, (delivered/volume_ml)*100);
+    }
   }
   
+  // Mark that recenter will be needed
+  needsRecenter = true;
+  
+  // Clear bolus delivery state
+  isDeliveringBolus = false;
+  currentBolusSteps = 0;
+  totalBolusSteps = 0;
+  
+  unsigned long bolusEndTime = millis();
+  float bolusDeliveryTime = (bolusEndTime - bolusStartTime) / 1000.0f;
+  
+  Serial.println("========== BOLUS COMPLETED ==========");
+  Serial.printf("Bolus volume delivered: %.2f mL\n", volume_ml);
+  Serial.printf("Delivery time: %.2f seconds\n", bolusDeliveryTime);
+  Serial.printf("Optimal delivery rate: %.1f mL/min\n", (volume_ml / bolusDeliveryTime) * 60);
+  Serial.println("=====================================");
+  
+  // Publish bolus completion to MQTT
+  publishBolusCompletion(volume_ml, bolusDeliveryTime);
+}
+
+void deliverBolus(float volume_ml) {
+  if (volume_ml <= 0) return;
+  
+  Serial.println("========== BOLUS DELIVERY STARTED ==========");
+  Serial.printf("Bolus Volume: %.2f mL\n", volume_ml);
+  Serial.printf("Current Remaining Steps: %ld\n", totalSteps);
+  Serial.printf("Total Volume Before Bolus: %.2f mL\n", activeData.volume_ml);
+  
+  long bolusSteps = volume_ml * STEPS_PER_ML;
+  Serial.printf("Bolus Steps Required: %ld\n", bolusSteps);
+  
+  // Calculate expected delivery time
+  float expectedDeliveryTime = calculateBolusDeliveryTime(volume_ml);
+  Serial.printf("Expected delivery time: %.1f seconds\n", expectedDeliveryTime);
+  
+  // Pause the normal infusion motor temporarily
+  bool wasInfusionActive = infusionActive;
+  if (wasInfusionActive) {
+    infusionActive = false;
+    Serial.println("Normal infusion paused for bolus delivery");
+  }
+  
+  // Use tested optimal speed constants
+  motorEnable(true);
+  digitalWrite(MOTOR_DIR_PIN, HIGH);  // Forward direction
+  
+  Serial.println("Delivering bolus at optimal motor speed...");
+  unsigned long bolusStartTime = millis();
+  
+  int stepDelayInt = (int)(BOLUS_STEP_DELAY_MICROS - 5);  // Subtract 5μs for HIGH pulse
+  
+  for (long i = 0; i < bolusSteps; i++) {
+    digitalWrite(MOTOR_STEP_PIN, HIGH);
+    delayMicroseconds(5);  // 5μs HIGH pulse (same as your test)
+    digitalWrite(MOTOR_STEP_PIN, LOW);
+    delayMicroseconds(stepDelayInt);  // Remaining delay for LOW phase
+    
+    // Progress feedback every 100 steps
+    if (i % 100 == 0) {
+      float delivered = (float)i / STEPS_PER_ML;
+      Serial.printf("Bolus progress: %.1f/%.1f mL (%.0f%%)\n", 
+                    delivered, volume_ml, (delivered/volume_ml)*100);
+    }
+  }
+  
+  unsigned long bolusEndTime = millis();
+  float bolusDeliveryTime = (bolusEndTime - bolusStartTime) / 1000.0f;
+  
+  Serial.printf("Bolus delivery completed in %.2f seconds\n", bolusDeliveryTime);
+  
+  // CRITICAL: Subtract bolus steps from total remaining steps
+  // This ensures the remaining infusion accounts for bolus volume already delivered
+  totalSteps = max(0L, totalSteps - bolusSteps);
+  
+  // Update activeData to reflect new remaining volume
+  float remainingVolume = totalSteps / STEPS_PER_ML;
+  
+  Serial.println("========== BOLUS DELIVERY COMPLETED ==========");
+  Serial.printf("Bolus Volume Delivered: %.2f mL\n", volume_ml);
+  Serial.printf("Delivery Time: %.2f seconds\n", bolusDeliveryTime);
+  Serial.printf("Steps Remaining After Bolus: %ld\n", totalSteps);
+  Serial.printf("Volume Remaining: %.2f mL\n", remainingVolume);
+  Serial.printf("New Infusion: %.2f mL at %.1f mL/min\n", remainingVolume, activeData.rate_ml_per_min);
+  Serial.println("===============================================");
+  
+  // Publish bolus completion to MQTT
+  publishBolusCompletion(volume_ml, bolusDeliveryTime);
+  
+  // Resume normal infusion at original flow rate with remaining volume
+  if (wasInfusionActive && totalSteps > 0) {
+    infusionActive = true;
+    lastStepTime = micros();
+    Serial.println("Normal infusion resumed at original flow rate");
+  } else if (totalSteps <= 0) {
+    // Bolus completed the entire infusion
+    infusionActive = false;
+    infusionCompleted = true;
+    showCompletionModal = true;
+    pump = PUMP_IDLE;
+    motorEnable(false);
+    Serial.println("Infusion completed with bolus delivery");
+  }
+}
+
+// Recenter pump - return syringe to initial position after infusion
+void recenterPump() {
+  if (totalStepsDelivered <= 0) {
+    Serial.println("No steps to recenter - pump already at initial position");
+    return;
+  }
+  
+  isRecentering = true;
+  
+  Serial.println("========== RECENTER STARTED ==========");
+  Serial.printf("Total steps delivered: %ld\n", totalStepsDelivered);
+  Serial.printf("Distance to reverse: %.2f mL\n", totalStepsDelivered / STEPS_PER_ML);
+  Serial.printf("STEPS_PER_ML constant: %.2f\n", STEPS_PER_ML);
+  
+  // Use slower speed for recentering (200 steps/sec)
+  const float RECENTER_STEPS_PER_SEC = 100.0;
+  const float RECENTER_STEP_DELAY_MICROS = 1000000.0 / RECENTER_STEPS_PER_SEC;
+  
+  motorEnable(true);
+  digitalWrite(MOTOR_DIR_PIN, LOW);  // REVERSE direction (opposite of forward)
+  delay(10);  // Brief delay for direction change to settle
+  
+  Serial.printf("Recentering at %.0f steps/sec...\n", RECENTER_STEPS_PER_SEC);
+  unsigned long recenterStartTime = millis();
+  
+  int stepDelayInt = (int)(RECENTER_STEP_DELAY_MICROS - 5);  // Subtract 5μs for HIGH pulse
+  
+  // Add extra steps to compensate for backlash during reverse direction
+  long totalReverseSteps = totalStepsDelivered + BACKLASH_STEPS;
+  Serial.printf("Reverse steps including backlash compensation: %ld (%.2f mL)\n", 
+                totalReverseSteps, totalReverseSteps / STEPS_PER_ML);
+  
+  long actualStepsReversed = 0;
+  for (long i = 0; i < totalReverseSteps; i++) {
+    digitalWrite(MOTOR_STEP_PIN, HIGH);
+    delayMicroseconds(5);  // 5μs HIGH pulse (consistent with bolus)
+    digitalWrite(MOTOR_STEP_PIN, LOW);
+    delayMicroseconds(stepDelayInt);  // Remaining delay for LOW phase
+    
+    actualStepsReversed++;
+    
+    // Progress feedback every 500 steps
+    if (i % 500 == 0) {
+      float reversed = (float)i / STEPS_PER_ML;
+      float total = totalReverseSteps / STEPS_PER_ML;
+      Serial.printf("Recenter progress: %.1f/%.1f mL (%.0f%%)\n", 
+                    reversed, total, (reversed/total)*100);
+    }
+  }
+  
+  unsigned long recenterEndTime = millis();
+  float recenterTime = (recenterEndTime - recenterStartTime) / 1000.0f;
+  
+  Serial.println("========== RECENTER COMPLETED ==========");
+  Serial.printf("Steps delivered during infusion: %ld (%.2f mL)\n", totalStepsDelivered, totalStepsDelivered / STEPS_PER_ML);
+  Serial.printf("Backlash during reverse: %ld steps (%.2f mL)\n", BACKLASH_STEPS, BACKLASH_STEPS / STEPS_PER_ML);
+  Serial.printf("Total steps reversed: %ld (%.2f mL)\n", actualStepsReversed, actualStepsReversed / STEPS_PER_ML);
+  Serial.printf("Recenter time: %.2f seconds\n", recenterTime);
+  Serial.println("Pump returned PAST initial position (reverse backlash compensated)");
+  Serial.println("========================================");
+  
+  // Now apply backlash compensation - move forward to take up mechanical play
+  Serial.println("========== BACKLASH COMPENSATION ==========");
+  Serial.printf("Moving forward %ld steps (%.2f mL) to compensate for mechanical play\n", 
+                BACKLASH_STEPS, BACKLASH_STEPS / STEPS_PER_ML);
+  
+  digitalWrite(MOTOR_DIR_PIN, HIGH);  // FORWARD direction
+  delay(10);  // Brief delay for direction change
+  
+  for (long i = 0; i < BACKLASH_STEPS; i++) {
+    digitalWrite(MOTOR_STEP_PIN, HIGH);
+    delayMicroseconds(5);
+    digitalWrite(MOTOR_STEP_PIN, LOW);
+    delayMicroseconds(stepDelayInt);
+  }
+  
+  Serial.println("Backlash compensation complete");
+  Serial.println("Syringe ready for next infusion (gap pre-compensated)");
+  Serial.println("===========================================");
+  
+  // Reset tracking variables
+  totalStepsDelivered = 0;
+  needsRecenter = false;
+  isRecentering = false;
+  
   motorEnable(false);
-  Serial.println("Motor: Bolus delivery completed");
 }
 
 // Update only the dynamic parts of running screen (no full redraw)
@@ -917,32 +1207,38 @@ void updateRunningProgress() {
   int y1 = STATUS_H + 60;
   int y2 = y1 + 60;
 
-  // Calculate progress based on motor steps delivered (this is the most accurate)
-  long totalStepsRequired = activeData.volume_ml * STEPS_PER_ML;
-  long stepsDelivered = totalStepsRequired - totalSteps;
-  
-  float deliveredVol = stepsDelivered / STEPS_PER_ML;
-  float remainingVol = max(0.0f, activeData.volume_ml - deliveredVol);
-  
-  // Volume fraction (0 = no progress, 1 = complete)
-  float vFrac = constrain(deliveredVol / max(0.001f, activeData.volume_ml), 0.0f, 1.0f);
-  
-  // Use the same fraction for both bars to ensure they complete together
-  float progressFrac = vFrac;  // Both bars use volume-based progress
-  
-  // Calculate remaining time based on planned time and progress
+  float originalTotalVolume = activeData.volume_ml + (activeData.bolusEnabled ? activeData.bolus_ml : 0);
+  float totalDeliveredVol = 0;
+  float totalRemainingVol = originalTotalVolume;
+  float progressFrac = 0;
   unsigned long remainingSec = 0;
-  if (progressFrac < 1.0f && activeData.time_min > 0) {
-    float remainingTimeFraction = 1.0f - progressFrac;
-    remainingSec = (unsigned long)(remainingTimeFraction * activeData.time_min * 60);
-  }
   
-  // Debug output every 5 seconds
-  static uint32_t lastDebugTime = 0;
-  if (millis() - lastDebugTime > 5000) {
-    lastDebugTime = millis();
-    Serial.printf("Progress: %.1f%% | Delivered: %.2f/%.2f mL | Remaining: %lu sec\n", 
-                  progressFrac * 100, deliveredVol, activeData.volume_ml, remainingSec);
+  if (isDeliveringBolus) {
+    // During bolus delivery
+    float bolusDelivered = currentBolusSteps / STEPS_PER_ML;
+    totalDeliveredVol = bolusDelivered;
+    totalRemainingVol = originalTotalVolume - bolusDelivered;
+    progressFrac = constrain(bolusDelivered / max(0.001f, originalTotalVolume), 0.0f, 1.0f);
+    
+    // Estimate remaining time for bolus
+    float bolusTimeRemaining = (totalBolusSteps - currentBolusSteps) / BOLUS_STEPS_PER_SEC;
+    float normalInfusionTime = activeData.time_min * 60.0;
+    remainingSec = (unsigned long)(bolusTimeRemaining + normalInfusionTime);
+  } else {
+    // During normal infusion
+    float bolusDelivered = activeData.bolusEnabled ? activeData.bolus_ml : 0;
+    long totalStepsRequired = activeData.volume_ml * STEPS_PER_ML;
+    long stepsDelivered = totalStepsRequired - totalSteps;
+    float normalInfusionDelivered = stepsDelivered / STEPS_PER_ML;
+    totalDeliveredVol = bolusDelivered + normalInfusionDelivered;
+    totalRemainingVol = originalTotalVolume - totalDeliveredVol;
+    progressFrac = constrain(totalDeliveredVol / max(0.001f, originalTotalVolume), 0.0f, 1.0f);
+    
+    // Calculate remaining time
+    if (progressFrac < 1.0f && activeData.time_min > 0) {
+      float remainingTimeFraction = 1.0f - progressFrac;
+      remainingSec = (unsigned long)(remainingTimeFraction * activeData.time_min * 60);
+    }
   }
 
   tft.fillRoundRect(barX + 1, y1 + 1, barW - 2, barH - 2, 6, COL_BG);
@@ -974,12 +1270,52 @@ void updateRunningProgress() {
   tft.setTextColor(COL_TEXT, COL_BG);
   tft.setTextSize(1);
   tft.drawString(timeStr, textX, y1 + 4);
-  tft.drawString(String(remainingVol, 1) + " ml", textX, y2 + 4);
+  tft.drawString(String(totalRemainingVol, 1) + " ml", textX, y2 + 4);
+  
+  // Draw green upward arrow if delivering bolus
+  if (isDeliveringBolus) {
+    int arrowX = SCREEN_W - 50;
+    int arrowY = y1 + 10;
+    
+    // Clear previous arrow area
+    tft.fillRect(arrowX - 5, arrowY - 20, 30, 40, COL_BG);
+    
+    // Draw upward arrow in green
+    tft.fillTriangle(arrowX, arrowY - 15, arrowX - 10, arrowY, arrowX + 10, arrowY, TFT_GREEN);
+    tft.fillRect(arrowX - 4, arrowY, 8, 15, TFT_GREEN);
+    
+    // Draw "BOLUS" text
+    tft.setTextColor(TFT_GREEN, COL_BG);
+    tft.setTextSize(1);
+    tft.setTextDatum(TC_DATUM);
+    tft.drawString("BOLUS", arrowX, arrowY + 18);
+  } else {
+    // Clear bolus indicator area when not delivering bolus
+    static bool wasBolus = false;
+    if (wasBolus) {
+      int arrowX = SCREEN_W - 50;
+      int arrowY = y1 + 10;
+      tft.fillRect(arrowX - 15, arrowY - 20, 30, 50, COL_BG);
+      wasBolus = false;
+    }
+    if (isDeliveringBolus) wasBolus = true;
+  }
 
+  // Update status indicator (blinking dot)
   bool blink = (millis() / 500) % 2;
   int cx = SCREEN_W - 50, cy = STATUS_H + 40;
   tft.fillCircle(cx, cy, 10, (pump == PUMP_RUNNING && blink) ? COL_OK : 0x4208);
   tft.drawCircle(cx, cy, 10, COL_TEXT);
+
+  // Update bolus status indicator (clear area first to prevent artifacts)
+  if (activeData.bolusEnabled && !isDeliveringBolus) {
+    tft.fillRect(0, SCREEN_H - 110, SCREEN_W, 20, COL_BG);  // Clear bolus status area
+    tft.setTextDatum(TC_DATUM);
+    tft.setTextColor(COL_OK, COL_BG);
+    tft.setTextSize(1);
+    String bolusStatus = "✓ Bolus delivered: " + String(activeData.bolus_ml, 1) + "mL (at start)";
+    tft.drawString(bolusStatus, SCREEN_W / 2, SCREEN_H - 100);
+  }
 }
 
 // Problem modal (yellow)
@@ -1458,12 +1794,16 @@ void publishProgressUpdate() {
     return;
   }
 
-  // Calculate progress based on motor steps delivered
-  long totalStepsRequired = activeData.volume_ml * STEPS_PER_ML;
+  // Calculate progress accounting for bolus delivered at start
+  float originalTotalVolume = activeData.volume_ml + (activeData.bolusEnabled ? activeData.bolus_ml : 0);
+  float bolusDelivered = activeData.bolusEnabled ? activeData.bolus_ml : 0;
+  
+  long totalStepsRequired = activeData.volume_ml * STEPS_PER_ML;  // Steps for remaining volume only
   long stepsDelivered = totalStepsRequired - totalSteps;
   
-  float deliveredVol = stepsDelivered / STEPS_PER_ML;
-  float remainingVol = max(0.0f, activeData.volume_ml - deliveredVol);
+  float normalInfusionDelivered = stepsDelivered / STEPS_PER_ML;
+  float totalDeliveredVol = bolusDelivered + normalInfusionDelivered;
+  float totalRemainingVol = originalTotalVolume - totalDeliveredVol;
   
   // Time calculation
   uint32_t now = millis();
@@ -1476,19 +1816,26 @@ void publishProgressUpdate() {
   }
   float elapsedMin = elapsedMs / 60000.0f;
   
-  // Calculate remaining time based on planned time and progress
-  float progressPercent = (deliveredVol / max(0.001f, activeData.volume_ml)) * 100.0f;
-  float timeRemainingMin = max(0.0f, activeData.time_min - elapsedMin);
+  // Calculate progress and remaining time based on original total volume
+  float progressPercent = (totalDeliveredVol / max(0.001f, originalTotalVolume)) * 100.0f;
+  float timeRemainingMin = max(0.0f, activeData.time_min * (1.0f - (progressPercent / 100.0f)));
 
   DynamicJsonDocument doc(512);
   doc["timeRemainingMin"] = round(timeRemainingMin * 100.0f) / 100.0f;
-  doc["volumeRemainingMl"] = round(remainingVol * 100.0f) / 100.0f;
+  doc["volumeRemainingMl"] = round(totalRemainingVol * 100.0f) / 100.0f;
   doc["timestamp"] = now;
   doc["elapsedTimeMin"] = round(elapsedMin * 100.0f) / 100.0f;
-  doc["deliveredVolumeMl"] = round(deliveredVol * 100.0f) / 100.0f;
+  doc["deliveredVolumeMl"] = round(totalDeliveredVol * 100.0f) / 100.0f;
   doc["progressPercent"] = round(progressPercent * 100.0f) / 100.0f;
   doc["flowRate"] = activeData.rate_ml_per_min;
   doc["status"] = (pump == PUMP_RUNNING) ? "running" : "paused";
+  
+  // Include bolus information
+  if (activeData.bolusEnabled) {
+    doc["bolusDelivered"] = round(bolusDelivered * 100.0f) / 100.0f;
+    doc["normalInfusionDelivered"] = round(normalInfusionDelivered * 100.0f) / 100.0f;
+    doc["originalTotalVolume"] = round(originalTotalVolume * 100.0f) / 100.0f;
+  }
 
   String topic = "devices/" + String(DEVICE_ID) + "/progress";
   String message;
@@ -1500,9 +1847,40 @@ void publishProgressUpdate() {
   static uint32_t lastProgressLog = 0;
   if (now - lastProgressLog >= 10000) {
     lastProgressLog = now;
-    Serial.printf("📈 Progress Update: %.1f%% | %.2f/%.2fmL | %.1fmin remaining\n", 
-                  progressPercent, deliveredVol, activeData.volume_ml, timeRemainingMin);
+    Serial.printf("📈 Progress Update: %.1f%% | Total: %.2f/%.2fmL (Bolus: %.1f + Normal: %.1f) | %.1fmin remaining\n", 
+                  progressPercent, totalDeliveredVol, originalTotalVolume, bolusDelivered, normalInfusionDelivered, timeRemainingMin);
   }
+}
+
+void publishBolusCompletion(float bolusVolume, float deliveryTime) {
+  if (currentInfusionId.length() == 0) {
+    Serial.println("Warning: Cannot publish bolus completion - no infusion ID");
+    return;
+  }
+
+  DynamicJsonDocument doc(512);
+  doc["action"] = "BOLUS_COMPLETED";
+  doc["deviceId"] = DEVICE_ID;
+  doc["infusionId"] = currentInfusionId;
+  doc["timestamp"] = millis();
+  doc["bolusDelivered"] = bolusVolume;
+  doc["deliveryTimeSeconds"] = deliveryTime;
+  doc["remainingSteps"] = totalSteps;
+  doc["remainingVolume"] = totalSteps / STEPS_PER_ML;
+  doc["status"] = "bolus_completed_resuming_normal";
+
+  String topic = "devices/" + String(DEVICE_ID) + "/bolus";
+  String message;
+  serializeJson(doc, message);
+
+  Serial.println("💉 Publishing Bolus Completion:");
+  Serial.println("   Topic: " + topic);
+  Serial.println("   Bolus Volume: " + String(bolusVolume, 2) + " ml");
+  Serial.println("   Delivery Time: " + String(deliveryTime, 2) + " seconds");
+  Serial.println("   Remaining Volume: " + String(totalSteps / STEPS_PER_ML, 2) + " ml");
+  
+  mqttClient.publish(topic.c_str(), message.c_str(), true);
+  Serial.println("✅ Bolus completion published successfully!");
 }
 
 void publishInfusionCompletion() {
@@ -1871,14 +2249,10 @@ void handleConfirmTouch(uint16_t x, uint16_t y) {
   if (inBtn(btnAccept, x, y)) {
     Serial.println("✅ User ACCEPTED infusion!");
     Serial.println("   Infusion ID: " + currentInfusionId);
-    Serial.println("   Starting motor and publishing confirmation...");
+    Serial.println("   Starting infusion sequence...");
     
     activeData = pendingData;
     
-    // Prepare and start motor infusion
-    prepareInfusion(activeData.volume_ml, activeData.rate_ml_per_min);
-    startMotor();
-
     pump = PUMP_RUNNING;
     infusionStartMs = millis();
     pausedAccumMs = 0;
@@ -1886,6 +2260,38 @@ void handleConfirmTouch(uint16_t x, uint16_t y) {
     infusionCompleted = false;
     showCompletionModal = false;
     completionModalDrawn = false;
+    
+    // Reset recenter tracking for new infusion
+    totalStepsDelivered = 0;
+    needsRecenter = false;
+    
+    Serial.println("========== NEW INFUSION STARTING ==========");
+    Serial.printf("Volume: %.2f mL | Rate: %.1f mL/min\n", activeData.volume_ml, activeData.rate_ml_per_min);
+    Serial.printf("Bolus enabled: %s | Bolus volume: %.2f mL\n", 
+                  activeData.bolusEnabled ? "YES" : "NO", activeData.bolus_ml);
+    Serial.printf("Reset totalStepsDelivered to: %ld\n", totalStepsDelivered);
+    Serial.println("===========================================");
+    
+    // Step 1: Deliver bolus first if enabled
+    if (activeData.bolusEnabled && activeData.bolus_ml > 0) {
+      Serial.println("🚀 STEP 1: Delivering preset bolus at start of infusion");
+      deliverBolusAtStart(activeData.bolus_ml);
+    }
+    
+    // Step 2: Calculate remaining volume after bolus
+    float remainingVolume = activeData.volume_ml - (activeData.bolusEnabled ? activeData.bolus_ml : 0);
+    
+    // Step 3: Prepare and start normal infusion with remaining volume
+    if (remainingVolume > 0) {
+      Serial.println("🚀 STEP 2: Starting normal infusion with remaining volume");
+      prepareInfusion(remainingVolume, activeData.rate_ml_per_min);
+      startMotor();
+    } else {
+      Serial.println("✅ Infusion completed with bolus only");
+      infusionCompleted = true;
+      showCompletionModal = true;
+      pump = PUMP_IDLE;
+    }
     
     // 🚨 CRITICAL: Publish infusion confirmation to MQTT (matches temp.js flow)
     publishInfusionConfirmation();
@@ -1982,28 +2388,23 @@ void handleRunningTouch(uint16_t x, uint16_t y) {
           
           pump = PUMP_IDLE;
           publishDeviceStatus("stopped");
+          
+          // Recenter pump if needed
+          if (needsRecenter) {
+            // Show recentering message
+            tft.fillRect(0, STATUS_H, SCREEN_W, SCREEN_H - STATUS_H - 40, TFT_WHITE);
+            tft.setTextColor(TFT_BLACK, TFT_WHITE);
+            tft.setTextSize(2);
+            tft.setCursor(60, SCREEN_H / 2 - 10);
+            tft.print("Recentering syringe...");
+            
+            recenterPump();
+            
+            // Clear message
+            tft.fillRect(0, STATUS_H, SCREEN_W, SCREEN_H - STATUS_H - 40, TFT_WHITE);
+          }
+          
           gotoState(UI_HOME);
-          break;
-        } else {
-          renderRunning();
-          break;
-        }
-      }
-    }
-    return;
-  }
-
-  if (activeData.bolusEnabled && inBtn(btnBolus, x, y)) {
-    drawProblemModal("Deliver bolus " + String(activeData.bolus_ml, 1) + " ml?");
-    delay(200);
-    int okx = SCREEN_W / 2 - 40, oky = SCREEN_H / 2 + 10, okw = 80, okh = 36;
-    uint16_t tx, ty;
-    while (true) {
-      if (getTouch(tx, ty)) {
-        if (tx >= okx && tx <= okx + okw && ty >= oky && ty <= oky + okh) {
-          // Deliver bolus
-          deliverBolus(activeData.bolus_ml);
-          renderRunning();
           break;
         } else {
           renderRunning();
@@ -2038,6 +2439,22 @@ void handleCompletionModalTouch(uint16_t x, uint16_t y) {
     currentInfusionId = "";
     
     publishDeviceStatus("idle");
+    
+    // Recenter pump if needed
+    if (needsRecenter) {
+      // Show recentering message
+      tft.fillRect(0, STATUS_H, SCREEN_W, SCREEN_H - STATUS_H - 40, TFT_WHITE);
+      tft.setTextColor(TFT_BLACK, TFT_WHITE);
+      tft.setTextSize(2);
+      tft.setCursor(60, SCREEN_H / 2 - 10);
+      tft.print("Recentering syringe...");
+      
+      recenterPump();
+      
+      // Clear message
+      tft.fillRect(0, STATUS_H, SCREEN_W, SCREEN_H - STATUS_H - 40, TFT_WHITE);
+    }
+    
     gotoState(UI_HOME);
   }
 }
@@ -2328,7 +2745,7 @@ void setup() {
 
   Serial.println("Initializing display...");
   tft.init();
-  tft.setRotation(1);
+  tft.setRotation(1);  // Flipped landscape (was 1)
   tft.fillScreen(COL_BG);
   tft.setTouch(calData);
   Serial.println("Display initialized successfully!");
